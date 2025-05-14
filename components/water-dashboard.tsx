@@ -26,6 +26,7 @@ import {
   PolarRadiusAxis,
   RadialBarChart,
   RadialBar,
+  ReferenceLine,
 } from "recharts"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -1248,74 +1249,370 @@ export default function WaterDashboard() {
                 <h2 className="text-lg font-semibold text-gray-700 mb-4">Zone Consumption Trends</h2>
                 <div className="h-80" aria-label="Zone consumption trends chart">
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" allowDuplicatedCategory={false} />
-                      <YAxis />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      {zoneOptions
+                    <BarChart
+                      layout="vertical"
+                      data={zoneOptions
                         .filter((zone) => zone.value !== "all")
-                        .map((zone, index) => (
-                          <Line
-                            key={zone.value}
-                            data={waterData.zones.bulkMeters.map((item) => ({
-                              month: item.month,
-                              [zone.value]: item[zone.value],
-                            }))}
-                            dataKey={zone.value}
-                            name={zone.label}
-                            stroke={ZONE_COLORS[index % ZONE_COLORS.length]}
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                            activeDot={{ r: 5 }}
-                          />
-                        ))}
-                    </LineChart>
+                        .map((zone) => {
+                          // Calculate average, min, max for each zone
+                          const zoneData = waterData.zones.bulkMeters.map((item) => item[zone.value])
+                          const avg = zoneData.reduce((sum, val) => sum + val, 0) / zoneData.length
+                          const latest = waterData.zones.bulkMeters[waterData.zones.bulkMeters.length - 1][zone.value]
+                          const max = Math.max(...zoneData)
+
+                          // Calculate trend (last 3 months)
+                          const last3Months = waterData.zones.bulkMeters.slice(-3).map((item) => item[zone.value])
+                          const trend = last3Months[2] - last3Months[0]
+
+                          return {
+                            name: zone.label,
+                            average: avg,
+                            latest: latest,
+                            maximum: max,
+                            trend: trend > 0 ? "increasing" : trend < 0 ? "decreasing" : "stable",
+                          }
+                        })}
+                      margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={80} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload
+                            return (
+                              <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
+                                <p className="font-medium text-gray-700">{data.name}</p>
+                                <p className="text-sm">
+                                  Latest: <span className="font-medium">{data.latest.toLocaleString()} m³</span>
+                                </p>
+                                <p className="text-sm">
+                                  Average:{" "}
+                                  <span className="font-medium">{Math.round(data.average).toLocaleString()} m³</span>
+                                </p>
+                                <p className="text-sm">
+                                  Maximum: <span className="font-medium">{data.maximum.toLocaleString()} m³</span>
+                                </p>
+                                <p className="text-sm">
+                                  Trend:{" "}
+                                  <span
+                                    className={`font-medium ${data.trend === "increasing" ? "text-red-500" : data.trend === "decreasing" ? "text-green-500" : "text-gray-500"}`}
+                                  >
+                                    {data.trend === "increasing"
+                                      ? "↑ Increasing"
+                                      : data.trend === "decreasing"
+                                        ? "↓ Decreasing"
+                                        : "→ Stable"}
+                                  </span>
+                                </p>
+                              </div>
+                            )
+                          }
+                          return null
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="latest" name="Latest Consumption" fill={ACCENT_COLOR} radius={[0, 4, 4, 0]}>
+                        {zoneOptions
+                          .filter((zone) => zone.value !== "all")
+                          .map((zone, index) => {
+                            const zoneData = waterData.zones.bulkMeters.map((item) => item[zone.value])
+                            const latest = waterData.zones.bulkMeters[waterData.zones.bulkMeters.length - 1][zone.value]
+                            const avg = zoneData.reduce((sum, val) => sum + val, 0) / zoneData.length
+
+                            // Color based on comparison to average
+                            let fillColor = SUCCESS_COLOR // below average
+                            if (latest > avg * 1.2)
+                              fillColor = DANGER_COLOR // 20% above average
+                            else if (latest > avg) fillColor = WARNING_COLOR // above average
+
+                            return <Cell key={`cell-${index}`} fill={fillColor} />
+                          })}
+                      </Bar>
+                      <Bar
+                        dataKey="average"
+                        name="Average Consumption"
+                        fill={BASE_COLOR}
+                        fillOpacity={0.3}
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block w-3 h-3 rounded-full"
+                      style={{ backgroundColor: SUCCESS_COLOR }}
+                    ></span>
+                    <span>Good (&gt;85%)</span>
+                    <span
+                      className="inline-block w-3 h-3 rounded-full ml-3"
+                      style={{ backgroundColor: WARNING_COLOR }}
+                    ></span>
+                    <span>Average (70-85%)</span>
+                    <span
+                      className="inline-block w-3 h-3 rounded-full ml-3"
+                      style={{ backgroundColor: DANGER_COLOR }}
+                    ></span>
+                    <span>Significantly above average</span>
+                  </div>
                 </div>
               </Card>
 
               <Card className="p-5">
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Zone Efficiency Trends</h2>
-                <div className="h-80" aria-label="Zone efficiency trends chart">
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">Zone Efficiency Heatmap</h2>
+                <div className="h-80" aria-label="Zone efficiency heatmap">
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" allowDuplicatedCategory={false} />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip formatter={(value) => `${value}%`} />
-                      <Legend />
-                      {zoneOptions
-                        .filter((zone) => zone.value !== "all")
-                        .map((zone, index) => {
-                          const zoneData = waterData.zones.bulkMeters.map((bulk, i) => {
-                            const indiv = waterData.zones.individual[i]
-                            return {
-                              month: bulk.month,
-                              [zone.value]:
-                                bulk[zone.value] > 0 ? ((indiv[zone.value] / bulk[zone.value]) * 100).toFixed(1) : 0,
-                            }
+                    <ComposedChart
+                      data={waterData.summary.map((month, idx) => {
+                        // Calculate efficiency for each zone in this month
+                        const zoneEfficiencies = {}
+                        const bulk = waterData.zones.bulkMeters[idx]
+                        const indiv = waterData.zones.individual[idx]
+
+                        zoneOptions
+                          .filter((zone) => zone.value !== "all")
+                          .forEach((zone) => {
+                            zoneEfficiencies[zone.value] =
+                              bulk[zone.value] > 0
+                                ? Number(((indiv[zone.value] / bulk[zone.value]) * 100).toFixed(1))
+                                : 0
                           })
 
-                          return (
-                            <Line
-                              key={zone.value}
-                              data={zoneData}
-                              dataKey={zone.value}
-                              name={zone.label}
-                              stroke={ZONE_COLORS[index % ZONE_COLORS.length]}
-                              strokeWidth={2}
-                              dot={{ r: 3 }}
-                              activeDot={{ r: 5 }}
-                            />
-                          )
-                        })}
-                    </LineChart>
+                        return {
+                          month: month.month,
+                          ...zoneEfficiencies,
+                          systemEfficiency: month.L1 > 0 ? (month.L3 / month.L1) * 100 : 0,
+                        }
+                      })}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
+                      <YAxis
+                        label={{
+                          value: "Efficiency %",
+                          angle: -90,
+                          position: "insideLeft",
+                          style: { textAnchor: "middle" },
+                        }}
+                        domain={[0, 100]}
+                      />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
+                                <p className="font-medium text-gray-700 mb-2">{label}</p>
+                                {payload
+                                  .filter((entry) => entry.dataKey !== "month")
+                                  .sort((a, b) => b.value - a.value)
+                                  .map((entry, index) => {
+                                    let color = SUCCESS_COLOR
+                                    if (entry.value < 70) color = DANGER_COLOR
+                                    else if (entry.value < 85) color = WARNING_COLOR
+
+                                    return (
+                                      <p
+                                        key={`item-${index}`}
+                                        className="text-sm flex justify-between items-center gap-3"
+                                      >
+                                        <span>
+                                          {entry.name === "systemEfficiency" ? "System Efficiency" : entry.name}:
+                                        </span>
+                                        <span className="font-medium" style={{ color }}>
+                                          {entry.value.toFixed(1)}%
+                                        </span>
+                                      </p>
+                                    )
+                                  })}
+                              </div>
+                            )
+                          }
+                          return null
+                        }}
+                      />
+                      <Legend verticalAlign="top" height={36} />
+
+                      {/* System efficiency line */}
+                      <Line
+                        type="monotone"
+                        dataKey="systemEfficiency"
+                        name="System Efficiency"
+                        stroke={BASE_COLOR}
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2 }}
+                        activeDot={{ r: 6, strokeWidth: 2, fill: "#4E4456", stroke: "#4E4456" }}
+                      />
+
+                      {/* Zone efficiency bars */}
+                      {zoneOptions
+                        .filter((zone) => zone.value !== "all")
+                        .map((zone, index) => (
+                          <Bar
+                            key={zone.value}
+                            dataKey={zone.value}
+                            name={zone.label}
+                            fill={ZONE_COLORS[index % ZONE_COLORS.length]}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={20}
+                            stackId="stack"
+                          >
+                            {waterData.summary.map((_, monthIndex) => {
+                              const bulk = waterData.zones.bulkMeters[monthIndex]
+                              const indiv = waterData.zones.individual[monthIndex]
+                              const efficiency = bulk[zone.value] > 0 ? (indiv[zone.value] / bulk[zone.value]) * 100 : 0
+
+                              let color = SUCCESS_COLOR
+                              if (efficiency < 70) color = DANGER_COLOR
+                              else if (efficiency < 85) color = WARNING_COLOR
+
+                              return <Cell key={`cell-${monthIndex}`} fill={color} fillOpacity={0.7} />
+                            })}
+                          </Bar>
+                        ))}
+                    </ComposedChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block w-3 h-3 rounded-full"
+                      style={{ backgroundColor: SUCCESS_COLOR }}
+                    ></span>
+                    <span>Good (&gt;85%)</span>
+                    <span
+                      className="inline-block w-3 h-3 rounded-full ml-3"
+                      style={{ backgroundColor: WARNING_COLOR }}
+                    ></span>
+                    <span>Average (70-85%)</span>
+                    <span
+                      className="inline-block w-3 h-3 rounded-full ml-3"
+                      style={{ backgroundColor: DANGER_COLOR }}
+                    ></span>
+                    <span>Poor (&lt;70%)</span>
+                  </div>
                 </div>
               </Card>
             </div>
+
+            {/* Add a new row with additional trend insights */}
+            <Card className="p-5">
+              <h2 className="text-lg font-semibold text-gray-700 mb-4">Consumption vs. Efficiency Analysis</h2>
+              <div className="h-96" aria-label="Consumption vs efficiency scatter plot">
+                <ResponsiveContainer width="100%" height={400}>
+                  <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      type="number"
+                      dataKey="consumption"
+                      name="Consumption (m³)"
+                      domain={["auto", "auto"]}
+                      label={{ value: "Consumption (m³)", position: "insideBottom", offset: -5 }}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="efficiency"
+                      name="Efficiency (%)"
+                      domain={[0, 100]}
+                      label={{ value: "Efficiency (%)", angle: -90, position: "insideLeft" }}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: "3 3" }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
+                              <p className="font-medium text-gray-700">{data.name}</p>
+                              <p className="text-sm">
+                                Month: <span className="font-medium">{data.month}</span>
+                              </p>
+                              <p className="text-sm">
+                                Consumption: <span className="font-medium">{data.consumption.toLocaleString()} m³</span>
+                              </p>
+                              <p className="text-sm">
+                                Efficiency: <span className="font-medium">{data.efficiency.toFixed(1)}%</span>
+                              </p>
+                              <p className="text-sm">
+                                Loss: <span className="font-medium">{data.loss.toLocaleString()} m³</span>
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Legend />
+
+                    {zoneOptions
+                      .filter((zone) => zone.value !== "all")
+                      .map((zone, zoneIndex) => {
+                        // Create data points for each month for this zone
+                        const data = waterData.zones.bulkMeters.map((bulk, monthIndex) => {
+                          const indiv = waterData.zones.individual[monthIndex]
+                          const loss = waterData.zones.loss[monthIndex]
+                          const month = waterData.summary[monthIndex].month
+
+                          return {
+                            name: zone.label,
+                            month: month,
+                            consumption: bulk[zone.value],
+                            efficiency: bulk[zone.value] > 0 ? (indiv[zone.value] / bulk[zone.value]) * 100 : 0,
+                            loss: loss[zone.value],
+                          }
+                        })
+
+                        return (
+                          <Scatter
+                            key={zone.value}
+                            name={zone.label}
+                            data={data}
+                            fill={ZONE_COLORS[zoneIndex % ZONE_COLORS.length]}
+                            shape="circle"
+                          />
+                        )
+                      })}
+
+                    {/* Add reference lines */}
+                    <ReferenceLine
+                      y={85}
+                      stroke={SUCCESS_COLOR}
+                      strokeDasharray="3 3"
+                      label={{ value: "Good (85%)", position: "right", fill: SUCCESS_COLOR }}
+                    />
+                    <ReferenceLine
+                      y={70}
+                      stroke={WARNING_COLOR}
+                      strokeDasharray="3 3"
+                      label={{ value: "Average (70%)", position: "right", fill: WARNING_COLOR }}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-medium text-gray-700 mb-2">High Consumption, High Efficiency</h3>
+                  <p className="text-gray-600">
+                    Zones in this quadrant have optimal performance with high water utilization and minimal losses.
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-medium text-gray-700 mb-2">High Consumption, Low Efficiency</h3>
+                  <p className="text-gray-600">
+                    Priority areas for improvement - these zones consume large volumes but have significant losses.
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-medium text-gray-700 mb-2">Low Consumption, Low Efficiency</h3>
+                  <p className="text-gray-600">
+                    These zones may have infrastructure issues like leaks or metering problems that need investigation.
+                  </p>
+                </div>
+              </div>
+            </Card>
           </TabsContent>
 
           {/* Direct Connection Tab */}
