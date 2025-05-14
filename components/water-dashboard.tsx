@@ -93,6 +93,7 @@ const waterData = {
     { month: "Jan-25", L1: 32580, L2: 35325, L3: 27898, Stage01Loss: -2745, Stage02Loss: 7427, TotalLoss: 4682 },
     { month: "Feb-25", L1: 44043, L2: 35811, L3: 28369, Stage01Loss: 8232, Stage02Loss: 7442, TotalLoss: 15674 },
     { month: "Mar-25", L1: 34915, L2: 39565, L3: 32264, Stage01Loss: -4650, Stage02Loss: 7301, TotalLoss: 2651 },
+    { month: "Apr-25", L1: 46039, L2: 45868, L3: 37192, Stage01Loss: 171, Stage02Loss: 8676, TotalLoss: 8847 },
   ],
   zones: {
     bulkMeters: [
@@ -111,6 +112,7 @@ const waterData = {
       { month: "Jan-25", Zone01FM: 2008, Zone03A: 4235, Zone03B: 3256, Zone05: 4267, Zone08: 1547, ZoneVS: 14 },
       { month: "Feb-25", Zone01FM: 1740, Zone03A: 4273, Zone03B: 2962, Zone05: 4231, Zone08: 1498, ZoneVS: 12 },
       { month: "Mar-25", Zone01FM: 1880, Zone03A: 3591, Zone03B: 3331, Zone05: 3862, Zone08: 2605, ZoneVS: 21 },
+      { month: "Apr-25", Zone01FM: 1880, Zone03A: 4041, Zone03B: 2157, Zone05: 3737, Zone08: 3203, ZoneVS: 13 },
     ],
     individual: [
       { month: "Jan-24", Zone01FM: 1746, Zone03A: 1387, Zone03B: 1664, Zone05: 2172, Zone08: 1986, ZoneVS: 0 },
@@ -128,6 +130,7 @@ const waterData = {
       { month: "Jan-25", Zone01FM: 2062, Zone03A: 1359, Zone03B: 1713, Zone05: 1254, Zone08: 1477, ZoneVS: 25 },
       { month: "Feb-25", Zone01FM: 1832, Zone03A: 1349, Zone03B: 1451, Zone05: 1233, Zone08: 1379, ZoneVS: 30 },
       { month: "Mar-25", Zone01FM: 1817, Zone03A: 1129, Zone03B: 1470, Zone05: 1184, Zone08: 2356, ZoneVS: 0 },
+      { month: "Apr-25", Zone01FM: 1629, Zone03A: 1247, Zone03B: 940, Zone05: 1480, Zone08: 1057, ZoneVS: 2 },
     ],
     loss: [
       { month: "Jan-24", Zone01FM: -151, Zone03A: -153, Zone03B: 989, Zone05: 2114, Zone08: 184, ZoneVS: 26 },
@@ -145,6 +148,7 @@ const waterData = {
       { month: "Jan-25", Zone01FM: -54, Zone03A: 2876, Zone03B: 1543, Zone05: 3013, Zone08: 70, ZoneVS: -11 },
       { month: "Feb-25", Zone01FM: -92, Zone03A: 2924, Zone03B: 1511, Zone05: 2998, Zone08: 119, ZoneVS: -18 },
       { month: "Mar-25", Zone01FM: 63, Zone03A: 2462, Zone03B: 1861, Zone05: 2678, Zone08: 249, ZoneVS: 21 },
+      { month: "Apr-25", Zone01FM: 251, Zone03A: 2794, Zone03B: 1217, Zone05: 2257, Zone08: 2146, ZoneVS: 11 },
     ],
   },
   directConnection: [
@@ -163,6 +167,7 @@ const waterData = {
     { month: "Jan-25", DC: 19998, Irrigation: 5208, DBuildingCommon: 17, MBCommon: 341 },
     { month: "Feb-25", DC: 21095, Irrigation: 5863, DBuildingCommon: 252, MBCommon: 202 },
     { month: "Mar-25", DC: 24275, Irrigation: 6326, DBuildingCommon: 36, MBCommon: 202 },
+    { month: "Apr-25", DC: 30837, Irrigation: 1411, DBuildingCommon: 0, MBCommon: 78 },
   ],
   totalMBToPay: [
     { month: "Jan-24", value: 4190 },
@@ -180,6 +185,7 @@ const waterData = {
     { month: "Jan-25", value: 5566 },
     { month: "Feb-25", value: 6317 },
     { month: "Mar-25", value: 6564 },
+    { month: "Apr-25", value: 1724 },
   ],
 }
 
@@ -486,10 +492,10 @@ const TimeRangeSlider = ({ value, onChange, min, max, labels }: TimeRangeSliderP
 
 // Main Dashboard Component
 export default function WaterDashboard() {
-  const [selectedMonth, setSelectedMonth] = useState("Mar-25")
+  const [selectedMonth, setSelectedMonth] = useState("Apr-25")
   const [selectedZone, setSelectedZone] = useState("all")
   const [activeTab, setActiveTab] = useState("overview")
-  const [timeRange, setTimeRange] = useState(14) // Default to latest month
+  const [timeRange, setTimeRange] = useState(15) // Default to latest month (Apr-25)
   const [showAnimations, setShowAnimations] = useState(false)
   const isMobile = useMobile()
 
@@ -535,6 +541,7 @@ export default function WaterDashboard() {
     "Jan-25",
     "Feb-25",
     "Mar-25",
+    "Apr-25",
   ]
 
   // Latest month metrics for dashboard cards
@@ -553,7 +560,7 @@ export default function WaterDashboard() {
   const efficiencyData = calculateEfficiency(waterData)
 
   // Filter data based on time range
-  const filteredData = timeRange === 14 ? [waterData.summary[timeRange]] : waterData.summary.slice(0, timeRange + 1)
+  const filteredData = timeRange === 15 ? [waterData.summary[timeRange]] : waterData.summary.slice(0, timeRange + 1)
 
   // 3D flow data
   const flowData = generate3DFlowData(selectedMonth)
@@ -635,7 +642,7 @@ export default function WaterDashboard() {
 
           {/* Time Range Slider with white text */}
           <div className="mt-6">
-            <TimeRangeSlider value={timeRange} onChange={setTimeRange} min={0} max={14} labels={timeRangeLabels} />
+            <TimeRangeSlider value={timeRange} onChange={setTimeRange} min={0} max={15} labels={timeRangeLabels} />
           </div>
         </div>
       </div>
