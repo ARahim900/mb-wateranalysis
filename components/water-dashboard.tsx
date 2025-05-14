@@ -72,7 +72,14 @@ const generateGradient = (color1: string, color2: string, direction = "to right"
 }
 
 // Color palettes for charts
-const ZONE_COLORS = generateColorPalette(BASE_COLOR, 6)
+const ZONE_COLORS = [
+  "#8ACCD5", // Teal/Light Blue (primary accent)
+  "#4E4456", // Dark Purple/Aubergine
+  "#5BC0DE", // Info Blue
+  "#50C878", // Success Green
+  "#FFB347", // Warning Orange
+  "#FF6B6B", // Danger Red
+]
 const LOSS_COLORS = [DANGER_COLOR, WARNING_COLOR, lightenColor(DANGER_COLOR, 0.3)]
 const PIE_COLORS = [ACCENT_COLOR, INFO_COLOR, SUCCESS_COLOR, WARNING_COLOR, DANGER_COLOR, SECONDARY_COLOR]
 
@@ -698,7 +705,7 @@ export default function WaterDashboard() {
           {/* Dashboard Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <AnimatedCard
                 title="Total Water Supply (L1)"
                 value={latestData.L1}
@@ -717,6 +724,32 @@ export default function WaterDashboard() {
                     stroke="currentColor"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                }
+              />
+              <AnimatedCard
+                title="Zone Distribution (L2)"
+                value={latestData.L2}
+                unit="m³"
+                change={
+                  previousMonthData.L2 > 0 ? ((latestData.L2 / previousMonthData.L2 - 1) * 100).toFixed(1) : "N/A"
+                }
+                changeLabel="vs previous month"
+                gradient={generateGradient(ACCENT_COLOR, INFO_COLOR)}
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
                   </svg>
                 }
               />
@@ -1157,11 +1190,14 @@ export default function WaterDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="p-5">
-                <div className="h-80" aria-label="Loss distribution by zone pie chart">
+                <div className="h-96" aria-label="Loss distribution by zone pie chart">
                   <ModernDonutChart
                     data={lossDistributionData}
                     colors={ZONE_COLORS}
                     title={`Loss Distribution by Zone - ${selectedMonth}`}
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={2}
                   />
                 </div>
               </Card>
@@ -1169,26 +1205,37 @@ export default function WaterDashboard() {
               {/* Zone Loss Radial Bar Chart */}
               <Card className="p-5">
                 <h2 className="text-lg font-semibold text-gray-700 mb-4">Loss to Supply Ratio</h2>
-                <div className="h-80" aria-label="Loss to supply ratio radial bar chart">
-                  <ResponsiveContainer width="100%" height={350}>
+                <div className="h-96" aria-label="Loss to supply ratio radial bar chart">
+                  <ResponsiveContainer width="100%" height={400}>
                     <RadialBarChart
                       cx="50%"
                       cy="50%"
-                      innerRadius={20}
-                      outerRadius={140}
-                      barSize={10}
+                      innerRadius={30}
+                      outerRadius={160}
+                      barSize={15}
                       data={zonePerformanceData}
                     >
                       <PolarGrid />
-                      <PolarAngleAxis dataKey="name" type="category" />
+                      <PolarAngleAxis dataKey="name" type="category" tick={{ fill: "#4E4456" }} />
                       <PolarRadiusAxis angle={0} domain={[0, "auto"]} />
-                      <RadialBar minAngle={1.5} label={{ position: "insideStart", fill: "#fff" }} dataKey="loss">
+                      <RadialBar 
+                        minAngle={15} 
+                        background={{ fill: "#f8f9fa" }}
+                        label={{ position: "insideStart", fill: "#fff", fontSize: 12, fontWeight: "bold" }} 
+                        dataKey="loss"
+                      >
                         {zonePerformanceData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={ZONE_COLORS[index % ZONE_COLORS.length]} />
                         ))}
                       </RadialBar>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" />
+                      <Legend 
+                        iconSize={10} 
+                        layout="vertical" 
+                        verticalAlign="middle" 
+                        align="right"
+                        formatter={(value, entry) => <span style={{ color: "#4E4456" }}>{value}</span>}
+                      />
                     </RadialBarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1699,158 +1746,173 @@ export default function WaterDashboard() {
                         <linearGradient id="colorMBToPay" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={ACCENT_COLOR} stopOpacity={0.8} />
                           <stop offset="95%" stopColor={ACCENT_COLOR} stopOpacity={0.3} />
-                        </linearGradient>
-                      </defs>
-                      <Bar dataKey="value" name="Total MB to Pay" fill="url(#colorMBToPay)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                      </linearGradient>
+                    </defs>
+                    <Bar dataKey="value" name="Total MB to Pay" fill="url(#colorMBToPay)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Reports & Insights Tab */}
+        <TabsContent value="reports" className="space-y-6">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">Key Performance Indicators (KPIs)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* KPI Card: Water Loss Percentage */}
+              <Card className="p-4">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">Water Loss Percentage</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {latestData.L1 > 0 ? ((latestData.TotalLoss / latestData.L1) * 100).toFixed(1) : "0"}%
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {latestData.TotalLoss.toLocaleString()} m³ lost out of {latestData.L1.toLocaleString()} m³ supplied.
+                </p>
+                <div className="mt-3">
+                  <AnimatedProgressBar
+                    value={latestData.TotalLoss}
+                    max={latestData.L1}
+                    color={DANGER_COLOR}
+                    label="Loss Percentage"
+                    additionalInfo="Compared to total water supply"
+                  />
+                </div>
+              </Card>
+
+              {/* KPI Card: System Efficiency */}
+              <Card className="p-4">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">System Efficiency</h3>
+                <p className="text-3xl font-bold text-gray-800">{efficiency}%</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Percentage of water supplied that reaches end-users.
+                </p>
+                <div className="mt-3">
+                  <AnimatedProgressBar
+                    value={Number.parseFloat(efficiency)}
+                    max={100}
+                    color={SUCCESS_COLOR}
+                    label="Efficiency"
+                    additionalInfo="Compared to total water supply"
+                  />
+                </div>
+              </Card>
+
+              {/* KPI Card: Direct Connection Usage */}
+              <Card className="p-4">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">Direct Connection Usage</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {waterData.directConnection.find((m) => m.month === selectedMonth)?.DC?.toLocaleString() || "0"} m³
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Total water supplied through direct connections.
+                </p>
+                <div className="mt-3">
+                  <AnimatedProgressBar
+                    value={waterData.directConnection.find((m) => m.month === selectedMonth)?.DC || 0}
+                    max={latestData.L1}
+                    color={INFO_COLOR}
+                    label="Direct Connection"
+                    additionalInfo="Compared to total water supply"
+                  />
                 </div>
               </Card>
             </div>
-          </TabsContent>
+          </Card>
 
-          {/* Reports & Insights Tab */}
-          <TabsContent value="reports" className="space-y-6">
-            <Card className="p-5">
-              <h2 className="text-lg font-semibold text-gray-700 mb-4">System Performance Report - {selectedMonth}</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-3">Performance Metrics</h3>
-                  <table className="w-full">
-                    <tbody>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">Total Supply (L1)</td>
-                        <td className="py-2 font-medium text-right">{latestData.L1.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">Zone Distribution (L2)</td>
-                        <td className="py-2 font-medium text-right">{latestData.L2.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">End User Consumption (L3)</td>
-                        <td className="py-2 font-medium text-right">{latestData.L3.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">Stage 01 Loss</td>
-                        <td className="py-2 font-medium text-right">{latestData.Stage01Loss.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">Stage 02 Loss</td>
-                        <td className="py-2 font-medium text-right">{latestData.Stage02Loss.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">Total Loss</td>
-                        <td className="py-2 font-medium text-right">{latestData.TotalLoss.toLocaleString()} m³</td>
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="py-2 text-gray-600">System Efficiency</td>
-                        <td className="py-2 font-medium text-right">{efficiency}%</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-3">Zone Performance</h3>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="py-2 text-left text-gray-600">Zone</th>
-                        <th className="py-2 text-right text-gray-600">Efficiency</th>
-                        <th className="py-2 text-right text-gray-600">Loss</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {zonePerformanceData.map((zone) => (
-                        <tr key={zone.name} className="border-b border-gray-200">
-                          <td className="py-2 text-gray-700">{zone.name}</td>
-                          <td className="py-2 font-medium text-right">
-                            {Number.parseFloat(zone.efficiency.toString()) > 85 ? (
-                              <span className="text-green-500">{zone.efficiency}%</span>
-                            ) : Number.parseFloat(zone.efficiency.toString()) > 70 ? (
-                              <span className="text-yellow-500">{zone.efficiency}%</span>
-                            ) : (
-                              <span className="text-red-500">{zone.efficiency}%</span>
-                            )}
-                          </td>
-                          <td className="py-2 font-medium text-right">{zone.loss.toLocaleString()} m³</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+          {/* Insights Section */}
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">Actionable Insights & Recommendations</h2>
+            <div className="space-y-4">
+              {/* Insight: High Water Loss */}
+              <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                <h3 className="font-medium text-gray-700 mb-2">High Water Loss Detected</h3>
+                <p className="text-sm text-gray-600">
+                  The system is experiencing a significant water loss of {latestData.TotalLoss.toLocaleString()} m³ in {selectedMonth}.
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                  <li>
+                    <strong>Recommendation:</strong> Conduct a thorough leak detection survey, focusing on zones with the highest loss ratios.
+                  </li>
+                  <li>
+                    <strong>Recommendation:</strong> Review and optimize pressure management strategies to reduce pipe bursts and leaks.
+                  </li>
+                </ul>
               </div>
 
-              <div className="mt-6">
-                <h3 className="font-medium text-gray-700 mb-3">Performance Insights</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700 mb-3">
-                    <span className="font-medium">System Efficiency:</span> The water system is currently operating at{" "}
-                    <span className="font-medium">{efficiency}%</span> efficiency, which is{" "}
-                    {Number.parseFloat(efficiency) > 85
-                      ? "excellent"
-                      : Number.parseFloat(efficiency) > 70
-                        ? "acceptable"
-                        : "below target"}
-                    .
-                  </p>
-                  <p className="text-gray-700 mb-3">
-                    <span className="font-medium">Key Observations:</span>
-                  </p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>
-                      Stage 01 Loss: {Math.abs(latestData.Stage01Loss)} m³{" "}
-                      {latestData.Stage01Loss > 0 ? "lost" : "gained"} in main distribution lines
-                    </li>
-                    <li>
-                      Zone 03A has the highest loss at{" "}
-                      {zonePerformanceData.find((z) => z.name === "Zone 03A")?.loss.toLocaleString()} m³
-                    </li>
-                    <li>
-                      Direct Connection usage:{" "}
-                      {waterData.directConnection.find((m) => m.month === selectedMonth)?.DC.toLocaleString()} m³
-                    </li>
-                    <li>
-                      Irrigation accounts for {dcBreakdownData.find((d) => d.name === "Irrigation")?.percentage}% of
-                      Direct Connection usage
-                    </li>
-                  </ul>
-                  <p className="text-gray-700 mt-3">
-                    <span className="font-medium">Recommendations:</span>
-                  </p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>Investigate Zone 03A for potential leaks or metering issues</li>
-                    <li>Review Stage 01 distribution lines for maintenance needs</li>
-                    <li>Optimize irrigation schedules to reduce consumption</li>
-                    <li>Consider implementing real-time monitoring for high-loss zones</li>
-                  </ul>
-                </div>
+              {/* Insight: Low System Efficiency */}
+              <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                <h3 className="font-medium text-gray-700 mb-2">Low System Efficiency</h3>
+                <p className="text-sm text-gray-600">
+                  The system efficiency is at {efficiency}% for {selectedMonth}, indicating potential inefficiencies in water distribution.
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                  <li>
+                    <strong>Recommendation:</strong> Implement a water audit to identify areas of unauthorized consumption or metering inaccuracies.
+                  </li>
+                  <li>
+                    <strong>Recommendation:</strong> Evaluate and upgrade aging infrastructure to minimize water loss due to pipe corrosion and leaks.
+                  </li>
+                </ul>
               </div>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  className="bg-[#8ACCD5] text-white px-4 py-2 rounded-lg shadow hover:bg-[#7BBBC4] transition-colors"
-                  aria-label="Export report"
-                >
-                  Export Report
-                </button>
+              {/* Insight: Imbalance in Direct Connection Usage */}
+              <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                <h3 className="font-medium text-gray-700 mb-2">Direct Connection Usage Imbalance</h3>
+                <p className="text-sm text-gray-600">
+                  There is a notable imbalance in direct connection usage, with Irrigation accounting for a significant portion.
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                  <li>
+                    <strong>Recommendation:</strong> Review irrigation schedules and promote water-efficient irrigation practices.
+                  </li>
+                  <li>
+                    <strong>Recommendation:</strong> Explore opportunities to diversify direct connection usage and reduce reliance on irrigation.
+                  </li>
+                </ul>
               </div>
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      <div className="bg-white border-t mt-6">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <p className="text-gray-500 text-sm">Muscat Bay Water Management System © 2025</p>
-            <div className="text-sm font-medium" style={{ color: "#4E4456" }}>
-              <span className="mr-2">Selected Period:</span> {selectedMonth}
             </div>
-          </div>
-        </div>
+          </Card>
+
+          {/* Report Generation Section */}
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">Generate Custom Reports</h2>
+            <p className="text-sm text-gray-600">
+              Create detailed reports tailored to your specific needs.
+            </p>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reportType" className="block text-sm font-medium text-gray-700">Report Type</label>
+                <select
+                  id="reportType"
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option>Water Loss Analysis</option>
+                  <option>System Efficiency Overview</option>
+                  <option>Direct Connection Usage</option>
+                  <option>Zone Performance Comparison</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="reportPeriod" className="block text-sm font-medium text-gray-700">Report Period</label>
+                <select
+                  id="reportPeriod"
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option>Last Month</option>
+                  <option>Last Quarter</option>
+                  <option>Last Year</option>
+                  <option>Custom Range</option>
+                </select>
+              </div>
+            </div>
+            <button className="mt-4 bg-[#4E4456] hover:bg-[#8A7A94] text-white font-bold py-2 px-4 rounded">
+              Generate Report
+            </button>
+          </Card>
+        </TabsContent>
       </div>
     </div>
-  )
+  )\
 }
