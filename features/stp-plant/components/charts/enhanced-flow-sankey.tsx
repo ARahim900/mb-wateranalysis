@@ -83,11 +83,23 @@ export function EnhancedFlowSankey({ data }: FlowSankeyProps) {
             labelTextColor={{ from: "color", modifiers: [["darker", 1]] }}
             animate={true}
             motionConfig="gentle"
-            nodeTooltip={({ node }) => (
-              <div className="bg-white p-2 rounded-md border shadow-sm text-sm">
-                <strong>{node.label}:</strong> {node.value.toLocaleString()} m³
-              </div>
-            )}
+            tooltip={({ node, link }) => {
+              if (node) {
+                return (
+                  <div className="bg-white p-2 rounded-md border shadow-sm text-sm">
+                    <strong>{node.label}</strong>: {node.value?.toLocaleString() || 0} m³
+                  </div>
+                )
+              }
+              if (link) {
+                return (
+                  <div className="bg-white p-2 rounded-md border shadow-sm text-sm">
+                    <strong>{link.source.label} → {link.target.label}</strong>: {link.value.toLocaleString()} m³
+                  </div>
+                )
+              }
+              return null
+            }}
           />
         </div>
       </CardContent>
