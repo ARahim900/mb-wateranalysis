@@ -1,57 +1,90 @@
-// Predictive Card Component
-function PredictiveCard({ title, current, predicted, unit, description, trend, timeframe }: PredictiveCardProps) {
-  const getTrendIcon = () => {
-    switch (trend) {
-      case "up":
-        return <ArrowUp className={`h-4 w-4 ${predicted > current ? "text-emerald-500" : "text-red-500"}`} />;
-      case "down":
-        return <ArrowDown className={`h-4 w-4 ${predicted < current ? "text-emerald-500" : "text-red-500"}`} />;
-      case "stable":
-        return <MinusIcon className="h-4 w-4 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowUp, ArrowDown, Clock } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+
+interface PredictiveCardProps {
+  title: string
+  current: number
+  predicted: number
+  unit: string
+  description: string
+  trend: "up" | "down" | "stable"
+  timeframe: string
+}
+
+export default function PredictiveCard({
+  title,
+  current,
+  predicted,
+  unit,
+  description,
+  trend,
+  timeframe
+}: PredictiveCardProps) {
+  // Calculate percent change
+  const difference = predicted - current
+  const percentChange = Math.abs(Math.round((difference / current) * 100))
   
-  const getChangePercentage = () => {
-    const change = ((predicted - current) / current) * 100;
-    return change.toFixed(1);
-  };
+  // Format numbers for display
+  const formatValue = (value: number) => {
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + "M"
+    if (value >= 1000) return (value / 1000).toFixed(1) + "K"
+    return value.toLocaleString()
+  }
+  
+  // Calculate progress bar value - normalized between 0-100
+  const progressValue = Math.max(0, Math.min(100, (predicted / (current * 1.5)) * 100))
   
   return (
     <Card>
-      <CardContent className="p-6">
-        <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <div className="flex items-baseline mt-1">
-            <h3 className="text-2xl font-bold">{predicted.toLocaleString()}</h3>
-            <span className="ml-1 text-sm">{unit}</span>
-          </div>
-          <div className="flex items-center mt-2">
-            {getTrendIcon()}
-            <span className={`ml-1 text-sm font-medium ${
-              trend === "up" ? 
-                (predicted > current ? "text-emerald-500" : "text-red-500") : 
-              trend === "down" ? 
-                (predicted < current ? "text-emerald-500" : "text-red-500") : 
-                "text-blue-500"
-            }`}>
-              {Math.abs(Number(getChangePercentage()))}% {trend}
-            </span>
-            <span className="ml-1 text-sm text-gray-500">in {timeframe}</span>
-          </div>
-          <div className="mt-4">
-            <div className="text-sm text-gray-500">{description}</div>
-            <div className="flex justify-between items-center mt-2">
-              <span className="text-xs">Current: {current.toLocaleString()} {unit}</span>
-              <ArrowRight className="h-3 w-3 text-gray-400" />
-              <span className="text-xs">Predicted: {predicted.toLocaleString()} {unit}</span>
+      <CardHeader className="pb-1">
+        <CardTitle className="text-md font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex justify-between items-baseline">
+            <div>
+              <span className="text-2xl font-bold">{formatValue(current)}</span>
+              <span className="text-sm ml-1">{unit}</span>
+              <p className="text-xs text-gray-500 mt-1">Current</p>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center justify-end">
+                <span className="text-2xl font-bold">{formatValue(predicted)}</span>
+                <span className="text-sm ml-1">{unit}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Predicted</p>
             </div>
           </div>
+          
+          <Progress value={progressValue} className="h-2" />
+          
+          <div className="flex justify-between">
+            <div className="flex items-center">
+              {trend === "up" ? (
+                <ArrowUp className="h-4 w-4 mr-1 text-emerald-500" />
+              ) : trend === "down" ? (
+                <ArrowDown className="h-4 w-4 mr-1 text-red-500" />
+              ) : null}
+              <span className={`text-sm font-medium ${
+                trend === "up" 
+                  ? "text-emerald-500" 
+                  : trend === "down" 
+                  ? "text-red-500" 
+                  : "text-gray-500"
+              }`}>
+                {percentChange}%
+              </span>
+            </div>
+            <div className="flex items-center text-sm text-gray-500">
+              <Clock className="h-3 w-3 mr-1" />
+              <span>{timeframe}</span>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-600">{description}</p>
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
-
-export default RealSTPDashboard;
