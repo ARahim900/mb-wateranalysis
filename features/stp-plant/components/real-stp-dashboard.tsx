@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import WaterQualityCard from "./water-quality-card"
+import { EnhancedFlowSankey } from "./charts/enhanced-flow-sankey"
 
 // Types for dashboard components
 interface KPICardProps {
@@ -34,11 +35,6 @@ interface KPICardProps {
   change: number
   icon: "flow" | "efficiency" | "utilization" | "quality"
   colorClass?: string
-}
-
-interface SankeyData {
-  nodes: { name: string }[]
-  links: { source: number; target: number; value: number }[]
 }
 
 // Helper to generate realistic water quality parameters based on the efficiency
@@ -295,6 +291,9 @@ export default function RealSTPDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Enhanced Flow Sankey Chart */}
+          <EnhancedFlowSankey data={sankeyData} />
 
           {/* Treatment Process Flow */}
           <Card>
