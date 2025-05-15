@@ -1,514 +1,509 @@
-"use client"
-
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart, DonutChart, LineChart } from "@/components/ui/charts"
+import { LineChart, BarChart, DonutChart } from "@/components/ui/charts"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { 
+  Flask, 
+  Beaker, 
+  FileBarChart, 
+  Microscope, 
+  Drop,
+  Droplets,
+  Waves,
+  ThermometerIcon,
+  ScrollText,
+  FileChart,
+  PieChart,
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  Download
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, CheckCircle2, Droplets, LineChart as LineChartIcon } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
-interface TreatmentQualityMetricsProps {
-  waterQualityParams: {
-    phValue: number
-    codValue: number
-    bodValue: number
-    tssValue: number
-    tnValue: number
-    tpValue: number
-    fecalValue: number
-    turbidity: number
-    dissolvedOxygen: number
-  }
-  dailyData: any[]
-  monthlyData: any[]
+interface WaterQualityParams {
+  phValue: number
+  codValue: number
+  bodValue: number
+  tssValue: number
+  tnValue: number
+  tpValue: number
+  fecalValue: number
+  turbidity: number
+  dissolvedOxygen: number
 }
 
-export function TreatmentQualityMetrics({ 
-  waterQualityParams, 
+interface DailyData {
+  day: string
+  flowRate: number
+  efficiency: number
+  utilization: number
+}
+
+interface MonthlyData {
+  month: string
+  flowRate: number
+  efficiency: number
+  utilization: number
+}
+
+interface TreatmentQualityMetricsProps {
+  waterQualityParams: WaterQualityParams
+  dailyData: DailyData[]
+  monthlyData: MonthlyData[]
+}
+
+export default function TreatmentQualityMetrics({
+  waterQualityParams,
   dailyData,
   monthlyData
 }: TreatmentQualityMetricsProps) {
-  const [selectedParameter, setSelectedParameter] = useState("bod")
+  // Generate water quality indicators based on standard ranges
+  const getWaterQualityIndicator = (parameter: string, value: number) => {
+    switch(parameter) {
+      case "pH":
+        if (value >= 6.5 && value <= 8.5) return "Excellent"
+        if ((value >= 6.0 && value < 6.5) || (value > 8.5 && value <= 9.0)) return "Good"
+        return "Poor"
+      case "COD":
+        if (value <= 50) return "Excellent"
+        if (value <= 100) return "Good"
+        return "Poor"
+      case "BOD":
+        if (value <= 10) return "Excellent"
+        if (value <= 20) return "Good"
+        return "Poor"
+      case "TSS":
+        if (value <= 15) return "Excellent"
+        if (value <= 30) return "Good"
+        return "Poor"
+      case "TN":
+        if (value <= 5) return "Excellent"
+        if (value <= 15) return "Good"
+        return "Poor"
+      case "TP":
+        if (value <= 1) return "Excellent"
+        if (value <= 2) return "Good"
+        return "Poor"
+      case "FC":
+        if (value <= 200) return "Excellent"
+        if (value <= 1000) return "Good"
+        return "Poor"
+      case "Turbidity":
+        if (value <= 2) return "Excellent"
+        if (value <= 5) return "Good"
+        return "Poor"
+      case "DO":
+        if (value >= 5) return "Excellent"
+        if (value >= 4) return "Good"
+        return "Poor"
+      default:
+        return "Unknown"
+    }
+  }
   
-  // Define parameter limits for quality assessment
-  const parameterLimits = {
-    bod: { target: 20, warning: 25, unit: "mg/L", name: "BOD" },
-    cod: { target: 100, warning: 120, unit: "mg/L", name: "COD" },
-    tss: { target: 30, warning: 40, unit: "mg/L", name: "TSS" },
-    tn: { target: 15, warning: 20, unit: "mg/L", name: "Total Nitrogen" },
-    tp: { target: 2, warning: 3, unit: "mg/L", name: "Total Phosphorus" },
-    fecal: { target: 1000, warning: 1500, unit: "CFU/100ml", name: "Fecal Coliform" },
+  // Function to get status badge color
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case "Excellent":
+        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+          <CheckCircle2 className="h-3 w-3 mr-1" /> 
+          Excellent
+        </Badge>
+      case "Good":
+        return <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+          <CheckCircle2 className="h-3 w-3 mr-1" /> 
+          Good
+        </Badge>
+      case "Poor":
+        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+          <AlertTriangle className="h-3 w-3 mr-1" /> 
+          Poor
+        </Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
   }
+  
+  // Generate quality distribution data
+  const qualityDistribution = [
+    { name: "Excellent", value: 5, color: "#10b981" },
+    { name: "Good", value: 3, color: "#3b82f6" },
+    { name: "Poor", value: 1, color: "#f59e0b" }
+  ]
 
-  const getStatusColor = (value: number, parameter: string) => {
-    const limits = parameterLimits[parameter as keyof typeof parameterLimits]
-    if (!limits) return "text-gray-500"
-    
-    if (value <= limits.target) return "text-emerald-500"
-    if (value <= limits.warning) return "text-amber-500"
-    return "text-red-500"
-  }
-
-  const getCompliancePercentage = () => {
-    let compliantCount = 0
-    let totalParams = 0
-    
-    if (waterQualityParams.bodValue <= parameterLimits.bod.target) compliantCount++
-    totalParams++
-    
-    if (waterQualityParams.codValue <= parameterLimits.cod.target) compliantCount++
-    totalParams++
-    
-    if (waterQualityParams.tssValue <= parameterLimits.tss.target) compliantCount++
-    totalParams++
-    
-    if (waterQualityParams.tnValue <= parameterLimits.tn.target) compliantCount++
-    totalParams++
-    
-    if (waterQualityParams.tpValue <= parameterLimits.tp.target) compliantCount++
-    totalParams++
-    
-    if (waterQualityParams.fecalValue <= parameterLimits.fecal.target) compliantCount++
-    totalParams++
-    
-    return Math.round((compliantCount / totalParams) * 100)
-  }
-
-  const getStatusBadge = (value: number, parameter: string) => {
-    const limits = parameterLimits[parameter as keyof typeof parameterLimits]
-    if (!limits) return <Badge>N/A</Badge>
-    
-    if (value <= limits.target) return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Compliant</Badge>
-    if (value <= limits.warning) return <Badge className="bg-amber-50 text-amber-700 border-amber-200">Warning</Badge>
-    return <Badge className="bg-red-50 text-red-700 border-red-200">Violation</Badge>
-  }
-
-  // Prepare chart data for parameter trends
-  const prepareParameterTrendData = () => {
-    // Create simulated data for visualization based on the selected parameter
-    // In a real implementation, this would use historical data from an API or database
-    const baseValue = waterQualityParams[`${selectedParameter}Value` as keyof typeof waterQualityParams] || 0
-    
-    return Array.from({ length: 30 }, (_, i) => {
-      const dayOffset = i - 29 // Days from today (-29 to 0)
-      // Create a small random variation around the current value
-      const randomFactor = 0.15 // 15% random variation
-      const randomValue = baseValue * (1 + (Math.random() * randomFactor * 2 - randomFactor))
+  // Generate time series water quality simulation data
+  const generateTimeSeriesData = () => {
+    // Use daily data time points but generate synthetic quality data
+    return dailyData.map((day, index) => {
+      // Base the quality parameters partly on the efficiency
+      const efficiencyFactor = day.efficiency / 100
+      
+      // Add some random variation
+      const randomVariation = (Math.random() * 0.2) - 0.1 // -10% to +10%
       
       return {
-        day: `Day ${30 + dayOffset}`,
-        value: Number(randomValue.toFixed(1)),
-        limit: parameterLimits[selectedParameter as keyof typeof parameterLimits]?.target || 0
+        day: day.day,
+        bod: Math.max(5, waterQualityParams.bodValue * (1 - (efficiencyFactor * 0.8)) * (1 + randomVariation)),
+        cod: Math.max(20, waterQualityParams.codValue * (1 - (efficiencyFactor * 0.7)) * (1 + randomVariation)),
+        tss: Math.max(5, waterQualityParams.tssValue * (1 - (efficiencyFactor * 0.75)) * (1 + randomVariation))
       }
     })
   }
-
-  const compliancePercentage = getCompliancePercentage()
+  
+  const timeSeriesData = generateTimeSeriesData()
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Water Quality Summary Card */}
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Water Quality Compliance</CardTitle>
-            <CardDescription>Overall regulatory compliance status</CardDescription>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-medium flex items-center">
+                <Beaker className="h-5 w-5 mr-2 text-blue-600" />
+                Water Quality Parameters
+              </CardTitle>
+              <Button variant="outline" size="sm" className="h-8">
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+            </div>
+            <CardDescription>
+              Key water quality indicators for treated sewage effluent
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center">
-              <div className="relative w-32 h-32 mb-4">
-                <svg viewBox="0 0 100 100" className="w-full h-full">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="#f3f4f6"
-                    strokeWidth="10"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke={compliancePercentage >= 90 ? "#10b981" : compliancePercentage >= 75 ? "#f59e0b" : "#ef4444"}
-                    strokeWidth="10"
-                    strokeDasharray={`${(compliancePercentage / 100) * 283} 283`}
-                    strokeDashoffset="0"
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <span className="text-3xl font-bold">{compliancePercentage}%</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  {compliancePercentage >= 90 ? (
-                    <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-500" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 mr-1 text-amber-500" />
-                  )}
-                  <span className={compliancePercentage >= 90 ? "text-emerald-600" : "text-amber-600"}>
-                    {compliancePercentage >= 90 ? "Fully Compliant" : "Partially Compliant"}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">Based on Oman Standard 115/2001</p>
-              </div>
+            <div className="relative overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Parameter</TableHead>
+                    <TableHead>Value</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Regulatory Limit</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">pH</TableCell>
+                    <TableCell>{waterQualityParams.phValue.toFixed(1)}</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>6.0 - 9.0</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("pH", waterQualityParams.phValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">BOD₅</TableCell>
+                    <TableCell>{waterQualityParams.bodValue}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≤ 20 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("BOD", waterQualityParams.bodValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">COD</TableCell>
+                    <TableCell>{waterQualityParams.codValue}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≤ 100 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("COD", waterQualityParams.codValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">TSS</TableCell>
+                    <TableCell>{waterQualityParams.tssValue}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≤ 30 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("TSS", waterQualityParams.tssValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Total Nitrogen</TableCell>
+                    <TableCell>{waterQualityParams.tnValue}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≤ 15 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("TN", waterQualityParams.tnValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Total Phosphorus</TableCell>
+                    <TableCell>{waterQualityParams.tpValue}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≤ 2 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("TP", waterQualityParams.tpValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Fecal Coliform</TableCell>
+                    <TableCell>{waterQualityParams.fecalValue}</TableCell>
+                    <TableCell>CFU/100ml</TableCell>
+                    <TableCell>≤ 1000 CFU/100ml</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("FC", waterQualityParams.fecalValue))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Turbidity</TableCell>
+                    <TableCell>{waterQualityParams.turbidity.toFixed(1)}</TableCell>
+                    <TableCell>NTU</TableCell>
+                    <TableCell>≤ 5 NTU</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("Turbidity", waterQualityParams.turbidity))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Dissolved Oxygen</TableCell>
+                    <TableCell>{waterQualityParams.dissolvedOxygen.toFixed(1)}</TableCell>
+                    <TableCell>mg/L</TableCell>
+                    <TableCell>≥ 4 mg/L</TableCell>
+                    <TableCell>
+                      {getStatusBadge(getWaterQualityIndicator("DO", waterQualityParams.dissolvedOxygen))}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
 
+        {/* Quality Distribution Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Key Water Quality Parameters</CardTitle>
-            <CardDescription>Current treatment performance</CardDescription>
+            <CardTitle className="text-lg font-medium flex items-center">
+              <PieChart className="h-5 w-5 mr-2 text-blue-600" />
+              Quality Distribution
+            </CardTitle>
+            <CardDescription>
+              Parameter quality status breakdown
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">BOD₅</span>
-                  <span className={`text-sm font-medium ${getStatusColor(waterQualityParams.bodValue, 'bod')}`}>
-                    {waterQualityParams.bodValue} mg/L
-                  </span>
-                </div>
-                <div className="relative">
-                  <Progress 
-                    value={Math.min(100, (waterQualityParams.bodValue / parameterLimits.bod.warning) * 100)} 
-                    className="h-2" 
-                  />
-                  <div 
-                    className="absolute top-0 h-2 border-r border-emerald-500" 
-                    style={{ left: `${(parameterLimits.bod.target / parameterLimits.bod.warning) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">COD</span>
-                  <span className={`text-sm font-medium ${getStatusColor(waterQualityParams.codValue, 'cod')}`}>
-                    {waterQualityParams.codValue} mg/L
-                  </span>
-                </div>
-                <div className="relative">
-                  <Progress 
-                    value={Math.min(100, (waterQualityParams.codValue / parameterLimits.cod.warning) * 100)} 
-                    className="h-2" 
-                  />
-                  <div 
-                    className="absolute top-0 h-2 border-r border-emerald-500" 
-                    style={{ left: `${(parameterLimits.cod.target / parameterLimits.cod.warning) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">TSS</span>
-                  <span className={`text-sm font-medium ${getStatusColor(waterQualityParams.tssValue, 'tss')}`}>
-                    {waterQualityParams.tssValue} mg/L
-                  </span>
-                </div>
-                <div className="relative">
-                  <Progress 
-                    value={Math.min(100, (waterQualityParams.tssValue / parameterLimits.tss.warning) * 100)}
-                    className="h-2" 
-                  />
-                  <div 
-                    className="absolute top-0 h-2 border-r border-emerald-500" 
-                    style={{ left: `${(parameterLimits.tss.target / parameterLimits.tss.warning) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
+            <div className="h-64">
+              <DonutChart 
+                data={qualityDistribution}
+                category="value"
+                index="name"
+                valueFormatter={(value) => `${value} parameters`}
+                className="h-64"
+              />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Physical Quality</CardTitle>
-            <CardDescription>Key physical indicators</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center mb-1">
-                    <Droplets className="h-4 w-4 mr-1 text-blue-500" />
-                    <span className="text-sm font-medium">pH</span>
-                  </div>
-                  <div className="text-lg font-semibold">{waterQualityParams.phValue}</div>
-                  <div className="text-xs text-gray-500">Target: 6.0-9.0</div>
+            <div className="mt-4 space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
+                  <span>Excellent</span>
                 </div>
-                
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center mb-1">
-                    <Droplets className="h-4 w-4 mr-1 text-blue-500" />
-                    <span className="text-sm font-medium">Turbidity</span>
-                  </div>
-                  <div className="text-lg font-semibold">{waterQualityParams.turbidity} NTU</div>
-                  <div className="text-xs text-gray-500">Target: ≤ 5 NTU</div>
-                </div>
+                <span className="font-medium">{qualityDistribution[0].value} parameters</span>
               </div>
-              
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex items-center mb-1">
-                  <Droplets className="h-4 w-4 mr-1 text-blue-500" />
-                  <span className="text-sm font-medium">Dissolved Oxygen</span>
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                  <span>Good</span>
                 </div>
-                <div className="flex justify-between">
-                  <div className="text-lg font-semibold">{waterQualityParams.dissolvedOxygen} mg/L</div>
-                  <Badge 
-                    className={waterQualityParams.dissolvedOxygen >= 4 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}
-                  >
-                    {waterQualityParams.dissolvedOxygen >= 4 ? "Optimal" : "Low"}
-                  </Badge>
+                <span className="font-medium">{qualityDistribution[1].value} parameters</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
+                  <span>Poor</span>
                 </div>
-                <div className="text-xs text-gray-500">Target: ≥ 4.0 mg/L</div>
+                <span className="font-medium">{qualityDistribution[2].value} parameters</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Time Series Quality Chart */}
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg font-medium">Water Quality Parameter Trends</CardTitle>
-              <CardDescription>30-day parameter analysis</CardDescription>
-            </div>
-            <Select value={selectedParameter} onValueChange={setSelectedParameter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select parameter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bod">BOD₅</SelectItem>
-                <SelectItem value="cod">COD</SelectItem>
-                <SelectItem value="tss">TSS</SelectItem>
-                <SelectItem value="tn">Total Nitrogen</SelectItem>
-                <SelectItem value="tp">Total Phosphorus</SelectItem>
-                <SelectItem value="fecal">Fecal Coliform</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <CardTitle className="text-lg font-medium flex items-center">
+            <FileChart className="h-5 w-5 mr-2 text-blue-600" />
+            Water Quality Trends
+          </CardTitle>
+          <CardDescription>
+            Daily key parameter variations
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <LineChart
-              data={prepareParameterTrendData()}
+          <div className="h-96">
+            <LineChart 
+              data={timeSeriesData}
               index="day"
-              categories={["value", "limit"]}
-              colors={["blue", "red"]}
-              valueFormatter={(value) => `${value} ${parameterLimits[selectedParameter as keyof typeof parameterLimits]?.unit || ''}`}
-              showLegend={true}
-              showXAxis={true}
-              showYAxis={true}
+              categories={["bod", "cod", "tss"]}
+              colors={["emerald", "blue", "amber"]}
+              valueFormatter={(value) => `${value.toFixed(1)} mg/L`}
               yAxisWidth={60}
             />
           </div>
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
             <div className="flex items-center">
-              <div className="h-3 w-3 rounded-full bg-blue-500 mr-1"></div>
-              <span>Actual {parameterLimits[selectedParameter as keyof typeof parameterLimits]?.name || selectedParameter}</span>
+              <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
+              <span>BOD₅ (mg/L)</span>
             </div>
             <div className="flex items-center">
-              <div className="h-3 w-3 rounded-full bg-red-500 mr-1"></div>
-              <span>Regulatory Limit</span>
+              <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+              <span>COD (mg/L)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
+              <span>TSS (mg/L)</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="parameters">
-        <TabsList className="mb-4">
-          <TabsTrigger value="parameters">Detailed Parameters</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance Analysis</TabsTrigger>
-          <TabsTrigger value="comparison">Monthly Comparison</TabsTrigger>
-        </TabsList>
+      {/* Treatment Process Impact on Quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <Flask className="h-5 w-5 mr-2 text-blue-600" />
+              Treatment Process Impact
+            </CardTitle>
+            <CardDescription>
+              Quality improvement at each treatment stage
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">Primary Treatment</span>
+                  <span className="text-sm text-gray-500">30-40% BOD removal</span>
+                </div>
+                <Progress value={35} className="h-2" />
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">Secondary Treatment</span>
+                  <span className="text-sm text-gray-500">85-95% BOD removal</span>
+                </div>
+                <Progress value={90} className="h-2" />
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">Tertiary Treatment</span>
+                  <span className="text-sm text-gray-500">95-99% BOD removal</span>
+                </div>
+                <Progress value={97} className="h-2" />
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Influent Characteristics</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-gray-500">BOD₅:</div>
+                    <div>250-350 mg/L</div>
+                    <div className="text-gray-500">COD:</div>
+                    <div>400-600 mg/L</div>
+                    <div className="text-gray-500">TSS:</div>
+                    <div>200-400 mg/L</div>
+                    <div className="text-gray-500">TN:</div>
+                    <div>40-60 mg/L</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Effluent Quality</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-gray-500">BOD₅:</div>
+                    <div>{waterQualityParams.bodValue} mg/L</div>
+                    <div className="text-gray-500">COD:</div>
+                    <div>{waterQualityParams.codValue} mg/L</div>
+                    <div className="text-gray-500">TSS:</div>
+                    <div>{waterQualityParams.tssValue} mg/L</div>
+                    <div className="text-gray-500">TN:</div>
+                    <div>{waterQualityParams.tnValue} mg/L</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="parameters" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Biochemical Oxygen Demand (BOD₅)</h3>
-                {getStatusBadge(waterQualityParams.bodValue, 'bod')}
-              </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.bodValue}</span>
-                <span className="ml-1 text-gray-500">mg/L</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Measures the amount of dissolved oxygen microorganisms need to break down organic material.
-                Lower values indicate cleaner water.
-              </p>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <Microscope className="h-5 w-5 mr-2 text-blue-600" />
+              Microbiological Analysis
+            </CardTitle>
+            <CardDescription>
+              Pathogen removal efficiency
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <BarChart
+                data={[
+                  { 
+                    pathogen: "Fecal Coliform", 
+                    influent: 1000000, 
+                    effluent: waterQualityParams.fecalValue
+                  },
+                  { 
+                    pathogen: "E. coli", 
+                    influent: 500000, 
+                    effluent: waterQualityParams.fecalValue * 0.8
+                  },
+                  { 
+                    pathogen: "Enterococci", 
+                    influent: 100000, 
+                    effluent: waterQualityParams.fecalValue * 0.3
+                  }
+                ]}
+                index="pathogen"
+                categories={["influent", "effluent"]}
+                colors={["amber", "emerald"]}
+                valueFormatter={(value) => 
+                  value >= 1000000 
+                    ? `${(value / 1000000).toFixed(1)}M CFU/100ml` 
+                    : value >= 1000 
+                    ? `${(value / 1000).toFixed(1)}K CFU/100ml` 
+                    : `${value.toFixed(0)} CFU/100ml`
+                }
+                yAxisWidth={80}
+                layout="vertical"
+              />
             </div>
             
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Chemical Oxygen Demand (COD)</h3>
-                {getStatusBadge(waterQualityParams.codValue, 'cod')}
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">Log Reduction Values</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {(Math.log10(1000000 / waterQualityParams.fecalValue)).toFixed(1)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Fecal Coliform Reduction</p>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {(Math.log10(500000 / (waterQualityParams.fecalValue * 0.8))).toFixed(1)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">E. coli Reduction</p>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {(Math.log10(100000 / (waterQualityParams.fecalValue * 0.3))).toFixed(1)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Enterococci Reduction</p>
+                </div>
               </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.codValue}</span>
-                <span className="ml-1 text-gray-500">mg/L</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Measures all chemicals in the water that can be oxidized. 
-                A wider indicator of water quality than BOD.
-              </p>
             </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Total Suspended Solids (TSS)</h3>
-                {getStatusBadge(waterQualityParams.tssValue, 'tss')}
-              </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.tssValue}</span>
-                <span className="ml-1 text-gray-500">mg/L</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Measures particles suspended in water that won't pass through a filter.
-                Affects water clarity and treatability.
-              </p>
-            </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Total Nitrogen (TN)</h3>
-                {getStatusBadge(waterQualityParams.tnValue, 'tn')}
-              </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.tnValue}</span>
-                <span className="ml-1 text-gray-500">mg/L</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Sum of all nitrogen forms in water. High levels can cause algal blooms
-                when discharged into natural waterways.
-              </p>
-            </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Total Phosphorus (TP)</h3>
-                {getStatusBadge(waterQualityParams.tpValue, 'tp')}
-              </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.tpValue}</span>
-                <span className="ml-1 text-gray-500">mg/L</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Measures all forms of phosphorus in water. Along with nitrogen,
-                contributes to eutrophication when in excess.
-              </p>
-            </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Fecal Coliform</h3>
-                {getStatusBadge(waterQualityParams.fecalValue, 'fecal')}
-              </div>
-              <div className="flex items-center mb-2">
-                <LineChartIcon className="h-4 w-4 text-gray-400 mr-2" />
-                <span className="text-2xl font-bold">{waterQualityParams.fecalValue}</span>
-                <span className="ml-1 text-gray-500">CFU/100ml</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Indicator of potential pathogens in water. Critical for determining
-                if treated water is safe for designated reuse applications.
-              </p>
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="compliance" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Compliance Distribution</CardTitle>
-              <CardDescription>Parameter compliance with Oman Standard 115/2001</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <DonutChart
-                  data={[
-                    {
-                      name: "Compliant",
-                      value: Object.keys(parameterLimits).filter(param => 
-                        waterQualityParams[`${param}Value` as keyof typeof waterQualityParams] <= 
-                        parameterLimits[param as keyof typeof parameterLimits].target
-                      ).length,
-                      color: "#10b981"
-                    },
-                    {
-                      name: "Warning",
-                      value: Object.keys(parameterLimits).filter(param => {
-                        const value = waterQualityParams[`${param}Value` as keyof typeof waterQualityParams]
-                        const limits = parameterLimits[param as keyof typeof parameterLimits]
-                        return value > limits.target && value <= limits.warning
-                      }).length,
-                      color: "#f59e0b"
-                    },
-                    {
-                      name: "Violation",
-                      value: Object.keys(parameterLimits).filter(param => 
-                        waterQualityParams[`${param}Value` as keyof typeof waterQualityParams] > 
-                        parameterLimits[param as keyof typeof parameterLimits].warning
-                      ).length,
-                      color: "#ef4444"
-                    }
-                  ]}
-                  category="value"
-                  index="name"
-                  valueFormatter={(value) => `${value} parameters`}
-                  showAnimation={true}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="comparison" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Parameter Evolution Over Time</CardTitle>
-              <CardDescription>Monthly averages based on regulatory limits</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <BarChart
-                  data={[
-                    { month: "Jan", bod: 85, cod: 78, tss: 82 },
-                    { month: "Feb", bod: 87, cod: 82, tss: 85 },
-                    { month: "Mar", bod: 90, cod: 85, tss: 89 },
-                    { month: "Apr", bod: 92, cod: 88, tss: 91 },
-                    { month: "May", bod: 94, cod: 92, tss: 93 }
-                  ]}
-                  index="month"
-                  categories={["bod", "cod", "tss"]}
-                  colors={["blue", "emerald", "amber"]}
-                  valueFormatter={(value) => `${value}%`}
-                  yAxisWidth={48}
-                  showLegend={true}
-                />
-              </div>
-              <div className="mt-2 text-sm text-gray-500 text-center">
-                Values shown as percentage of compliance with regulatory limits (higher is better)
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
-export default TreatmentQualityMetrics
