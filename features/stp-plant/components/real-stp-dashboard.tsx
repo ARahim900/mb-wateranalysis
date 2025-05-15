@@ -26,6 +26,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import WaterQualityCard from "./water-quality-card"
 import { EnhancedFlowSankey } from "./charts/enhanced-flow-sankey"
+import { EnhancedEfficiencyGauge } from "./charts/enhanced-efficiency-gauge"
+import { DailyEfficiencyChart } from "./charts/daily-efficiency-chart"
+import { MonthlyEfficiencyChart } from "./charts/monthly-efficiency-chart"
+import { EnhancedDataTable } from "./enhanced-data-table"
 
 // Types for dashboard components
 interface KPICardProps {
@@ -185,49 +189,7 @@ export default function RealSTPDashboard() {
         <TabsContent value="overview" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Efficiency Gauge */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Treatment Efficiency</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col items-center">
-                  <div className="relative w-48 h-48 mb-4">
-                    <svg viewBox="0 0 100 100" className="w-full h-full">
-                      {/* Background circle */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="45"
-                        fill="none"
-                        stroke="#f3f4f6"
-                        strokeWidth="10"
-                      />
-                      {/* Progress circle */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="45"
-                        fill="none"
-                        stroke="#10b981"
-                        strokeWidth="10"
-                        strokeDasharray={`${(kpiData.efficiency / 100) * 283} 283`}
-                        strokeDashoffset="0"
-                        transform="rotate(-90 50 50)"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center flex-col">
-                      <span className="text-4xl font-bold text-emerald-600">{kpiData.efficiency}%</span>
-                      <span className="text-gray-500 text-sm">efficiency</span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-500 mt-1">
-                      Treatment efficiency measures how effectively the plant converts raw sewage into treated water.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <EnhancedEfficiencyGauge efficiency={kpiData.efficiency} />
 
             {/* Plant Utilization Chart */}
             <Card>
@@ -284,8 +246,8 @@ export default function RealSTPDashboard() {
               <div className="h-80">
                 <PieChart 
                   data={[
-                    { name: "Tanker Discharge", value: sankeyData.links[1].value, color: "#3b82f6" },
-                    { name: "Direct Sewage", value: sankeyData.links[2].value, color: "#0ea5e9" }
+                    { name: "Tanker Discharge", value: sankeyData.links[1]?.value || 0, color: "#3b82f6" },
+                    { name: "Direct Sewage", value: sankeyData.links[2]?.value || 0, color: "#0ea5e9" }
                   ]}
                 />
               </div>
@@ -305,28 +267,28 @@ export default function RealSTPDashboard() {
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
                   <h3 className="font-medium mb-2">Primary Treatment</h3>
                   <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {Math.round(sankeyData.links[3].value)} m³
+                    {Math.round(sankeyData.links[3]?.value || 0)} m³
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    {Math.round((sankeyData.links[3].value / sankeyData.links[0].value) * 100)}% of inflow
+                    {Math.round(((sankeyData.links[3]?.value || 0) / (sankeyData.links[0]?.value || 1)) * 100)}% of inflow
                   </p>
                 </div>
                 <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg text-center">
                   <h3 className="font-medium mb-2">Secondary Treatment</h3>
                   <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400">
-                    {Math.round(sankeyData.links[5].value)} m³
+                    {Math.round(sankeyData.links[5]?.value || 0)} m³
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    {Math.round((sankeyData.links[5].value / sankeyData.links[0].value) * 100)}% of inflow
+                    {Math.round(((sankeyData.links[5]?.value || 0) / (sankeyData.links[0]?.value || 1)) * 100)}% of inflow
                   </p>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-lg text-center">
                   <h3 className="font-medium mb-2">TSE Output</h3>
                   <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {Math.round(sankeyData.links[7].value)} m³
+                    {Math.round(sankeyData.links[7]?.value || 0)} m³
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    {Math.round((sankeyData.links[7].value / sankeyData.links[0].value) * 100)}% of inflow
+                    {Math.round(((sankeyData.links[7]?.value || 0) / (sankeyData.links[0]?.value || 1)) * 100)}% of inflow
                   </p>
                 </div>
               </div>
@@ -336,27 +298,7 @@ export default function RealSTPDashboard() {
 
         {/* Daily Analysis Tab */}
         <TabsContent value="daily" className="space-y-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Daily Efficiency</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <AreaChart 
-                  data={dailyData.map((item: any) => ({
-                    name: `Day ${item.day}`,
-                    value: item.efficiency,
-                  }))}
-                  categories={["value"]}
-                  index="name"
-                  colors={["#10b981"]}
-                  valueFormatter={(value: number) => `${value.toFixed(1)}%`}
-                  showLegend={false}
-                  yAxisWidth={60}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <DailyEfficiencyChart data={dailyData} />
 
           <Card>
             <CardHeader className="pb-2">
@@ -490,91 +432,12 @@ export default function RealSTPDashboard() {
 
         {/* Monthly Trends Tab */}
         <TabsContent value="trends" className="space-y-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Monthly Efficiency Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <AreaChart 
-                  data={monthlyData.map((item: any) => ({
-                    name: item.month,
-                    Efficiency: item.efficiency,
-                    Target: item.target,
-                  }))}
-                  categories={["Efficiency", "Target"]}
-                  index="name"
-                  colors={["#10b981", "#f59e0b"]}
-                  valueFormatter={(value: number) => `${value.toFixed(1)}%`}
-                  yAxisWidth={60}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Average Daily Flow Rate by Month</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <BarChart 
-                  data={monthlyData.map((item: any) => ({
-                    name: item.month,
-                    "Flow Rate": item.flowRate,
-                  }))}
-                  categories={["Flow Rate"]}
-                  index="name"
-                  colors={["#3b82f6"]}
-                  valueFormatter={(value: number) => `${value} m³`}
-                  showLegend={false}
-                  yAxisWidth={60}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <MonthlyEfficiencyChart data={monthlyData} />
         </TabsContent>
 
         {/* Raw Data Tab */}
         <TabsContent value="raw" className="space-y-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Daily Records</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Influent Flow (m³)</TableHead>
-                      <TableHead className="text-right">Effluent Flow (m³)</TableHead>
-                      <TableHead className="text-right">Efficiency (%)</TableHead>
-                      <TableHead className="text-right">Energy Usage (kWh)</TableHead>
-                      <TableHead className="text-right">Chemical Usage (kg)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rawData.slice(0, 20).map((record: any) => (
-                      <TableRow key={record.id}>
-                        <TableCell>{record.date}</TableCell>
-                        <TableCell className="text-right">{record.influentFlow}</TableCell>
-                        <TableCell className="text-right">{record.effluentFlow}</TableCell>
-                        <TableCell className="text-right">{record.efficiency}%</TableCell>
-                        <TableCell className="text-right">{record.energyUsage}</TableCell>
-                        <TableCell className="text-right">{record.chemicalUsage}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {rawData.length > 20 && (
-                  <div className="text-center mt-4 text-gray-500">
-                    Showing 20 of {rawData.length} records
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <EnhancedDataTable data={rawData} previousData={previousMonthRawData} />
         </TabsContent>
       </Tabs>
     </div>
