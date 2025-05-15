@@ -2,12 +2,15 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { STPHeader } from "./stp-header"
 import { KPICard } from "./kpi-card"
 import { EnhancedEfficiencyGauge } from "./charts/enhanced-efficiency-gauge"
 import { EnhancedFlowSankey } from "./charts/enhanced-flow-sankey"
 import { DailyEfficiencyChart } from "./charts/daily-efficiency-chart"
 import { MonthlyEfficiencyChart } from "./charts/monthly-efficiency-chart"
+import { MonthlyTrendChart } from "./charts/monthly-trend-chart"
+import { LossAnalysisChart } from "./charts/loss-analysis-chart"
 import { EnhancedDataTable } from "./enhanced-data-table"
 import { useSTPData } from "../hooks/use-stp-data"
 
@@ -23,9 +26,15 @@ export default function STPPlantDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <LoadingSpinner />
       </div>
     )
+  }
+
+  // Ensure sankeyData has valid nodes and links
+  const validSankeyData = {
+    nodes: Array.isArray(sankeyData?.nodes) ? sankeyData.nodes : [{ name: "No Data" }],
+    links: Array.isArray(sankeyData?.links) ? sankeyData.links : [],
   }
 
   return (
@@ -77,6 +86,7 @@ export default function STPPlantDashboard() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="daily">Daily Analysis</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="losses">Loss Analysis</TabsTrigger>
           <TabsTrigger value="raw">Raw Data</TabsTrigger>
         </TabsList>
 
@@ -101,7 +111,7 @@ export default function STPPlantDashboard() {
             </div>
           </div>
 
-          <EnhancedFlowSankey data={sankeyData} />
+          <EnhancedFlowSankey data={validSankeyData} />
         </TabsContent>
 
         {/* Daily Analysis Tab */}
@@ -112,6 +122,12 @@ export default function STPPlantDashboard() {
         {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-6">
           <MonthlyEfficiencyChart data={monthlyData} />
+          <MonthlyTrendChart data={monthlyData} selectedMonth={selectedMonth} />
+        </TabsContent>
+
+        {/* Loss Analysis Tab */}
+        <TabsContent value="losses" className="space-y-6">
+          <LossAnalysisChart data={dailyData} selectedMonth={selectedMonth} />
         </TabsContent>
 
         {/* Raw Data Tab */}

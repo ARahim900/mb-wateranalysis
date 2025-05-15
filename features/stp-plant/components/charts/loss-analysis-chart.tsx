@@ -4,67 +4,64 @@ import { useMemo } from "react"
 import { ResponsiveLine } from "@nivo/line"
 import { Card, CardContent } from "@/components/ui/card"
 import { SectionHeader } from "@/components/ui/section-header"
-import type { MonthlyAggregate } from "../../utils/data-parser"
 
-interface MonthlyTrendChartProps {
-  data: MonthlyAggregate[]
-  selectedMonth: string | null
+interface LossAnalysisChartProps {
+  data: any[]
+  selectedMonth: string
 }
 
-export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProps) {
+export function LossAnalysisChart({ data, selectedMonth }: LossAnalysisChartProps) {
   const chartData = useMemo(() => {
-    if (!data.length) return []
+    if (!data || data.length === 0) {
+      return []
+    }
 
+    // Calculate losses for each day
     return [
-      {
-        id: "Total Inlet Sewage",
-        color: "#4E4456",
-        data: data.map((month) => ({
-          x: month.month,
-          y: month.totalInletSewage,
-        })),
-      },
-      {
-        id: "Total Treated Water",
-        color: "#8ACCD5",
-        data: data.map((month) => ({
-          x: month.month,
-          y: month.totalTreatedWater,
-        })),
-      },
-      {
-        id: "Irrigation Output",
-        color: "#50C878",
-        data: data.map((month) => ({
-          x: month.month,
-          y: month.totalIrrigationOutput,
-        })),
-      },
       {
         id: "Treatment Losses",
         color: "#FF5252", // Red color for losses
-        data: data.map((month) => ({
-          x: month.month,
-          y: month.totalInletSewage - month.totalTreatedWater,
+        data: data.map((day) => ({
+          x: day.day || 0,
+          y: (day.influentFlow || 0) - (day.effluentFlow || 0),
+        })),
+      },
+      {
+        id: "Inflow",
+        color: "#4E4456",
+        data: data.map((day) => ({
+          x: day.day || 0,
+          y: day.influentFlow || 0,
+        })),
+      },
+      {
+        id: "Outflow",
+        color: "#8ACCD5",
+        data: data.map((day) => ({
+          x: day.day || 0,
+          y: day.effluentFlow || 0,
         })),
       },
     ]
   }, [data])
 
-  const formatMonth = (month: string) => {
-    const date = new Date(month + "-01")
-    return date.toLocaleDateString("en-US", { month: "short" })
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <SectionHeader title="Loss Analysis" description="Daily water loss analysis for the selected month" />
+          <div className="h-80 flex items-center justify-center">
+            <p className="text-gray-500">No data available for the selected month</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
-  if (!data.length) return null
-
   return (
-    <Card className="col-span-2">
+    <Card>
       <CardContent className="p-6">
-        <SectionHeader
-          title="Loss Trends Over Time"
-          description="Monthly water flow and loss trends through the STP plant"
-        />
+        <SectionHeader title="Loss Analysis" description={`Daily water loss analysis for ${selectedMonth}`} />
         <div className="h-80">
           <ResponsiveLine
             data={chartData}
@@ -72,7 +69,7 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
             xScale={{ type: "point" }}
             yScale={{
               type: "linear",
-              min: "auto",
+              min: 0,
               max: "auto",
               stacked: false,
               reverse: false,
@@ -83,11 +80,10 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
             axisBottom={{
               tickSize: 5,
               tickPadding: 5,
-              tickRotation: -45,
-              legend: "Month",
+              tickRotation: 0,
+              legend: "Day of Month",
               legendOffset: 36,
               legendPosition: "middle",
-              format: formatMonth,
             }}
             axisLeft={{
               tickSize: 5,
@@ -102,26 +98,13 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
             pointColor={{ theme: "background" }}
             pointBorderWidth={2}
             pointBorderColor={{ from: "serieColor" }}
-            pointLabelYOffset={-12}
-            enableSlices="x"
-            useMesh={true}
             lineWidth={3} // Increase line width for better visibility
             enablePoints={true}
             enableLine={true} // Ensure lines are always enabled
+            enableSlices="x"
+            useMesh={true}
             animate={true}
             motionConfig="gentle"
-            theme={{
-              tooltip: {
-                container: {
-                  background: "white",
-                  color: "#333",
-                  fontSize: 12,
-                  borderRadius: "4px",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.25)",
-                  padding: "5px 9px",
-                },
-              },
-            }}
             legends={[
               {
                 anchor: "bottom-right",
@@ -148,21 +131,18 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
                 ],
               },
             ]}
-            markers={
-              selectedMonth
-                ? [
-                    {
-                      axis: "x",
-                      value: selectedMonth,
-                      lineStyle: { stroke: "#FF6B6B", strokeWidth: 2, strokeDasharray: "4 4" },
-                      legend: "Selected Month",
-                      legendOrientation: "vertical",
-                      legendPosition: "top-right",
-                      textStyle: { fill: "#FF6B6B" },
-                    },
-                  ]
-                : []
-            }
+            theme={{
+              tooltip: {
+                container: {
+                  background: "white",
+                  color: "#333",
+                  fontSize: 12,
+                  borderRadius: "4px",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.25)",
+                  padding: "5px 9px",
+                },
+              },
+            }}
           />
         </div>
       </CardContent>

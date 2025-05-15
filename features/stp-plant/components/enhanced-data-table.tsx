@@ -1,230 +1,174 @@
-"use client"
+import type React from "react"
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from "lucide-react"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { 
-  Download,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  GanttChartSquare
-} from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-
-interface EnhancedDataTableProps {
-  data: any[]
-  previousData: any[]
+interface DataRow {
+  id: string | number
+  date: string
+  influentFlow?: number
+  effluentFlow?: number
+  efficiency?: number
+  energyUsage?: number
+  chemicalUsage?: number
+  [key: string]: any
 }
 
-export function EnhancedDataTable({ data, previousData }: EnhancedDataTableProps) {
-  const [sortField, setSortField] = useState<string>("id")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [filter, setFilter] = useState<"all" | "above-avg" | "below-avg">("all")
-  const [currentTab, setCurrentTab] = useState<"current" | "previous">("current")
+interface EnhancedDataTableProps {
+  data: DataRow[]
+  previousData?: DataRow[]
+  title?: string
+}
 
-  // Calculate average efficiency for filtering
-  const avgEfficiency =
-    data.reduce((acc, record) => acc + record.efficiency, 0) / data.length
+// Helper function to safely format numbers
+const safeFormat = (value: number | undefined | null, decimals = 1): string => {
+  if (value === undefined || value === null || isNaN(value)) {
+    return "N/A"
+  }
+  return value.toFixed(decimals)
+}
 
-  // Sort and filter data
-  const sortedData = [...(currentTab === "current" ? data : previousData)].sort((a, b) => {
-    if (sortDirection === "asc") {
-      return a[sortField] > b[sortField] ? 1 : -1
-    } else {
-      return a[sortField] < b[sortField] ? 1 : -1
+export const EnhancedDataTable: React.FC<EnhancedDataTableProps> = ({ data, previousData, title = "Raw Data" }) => {
+  // Function to calculate percentage change
+  const calculateChange = (current: number | undefined | null, previous: number | undefined | null) => {
+    if (current === undefined || current === null || previous === undefined || previous === null || previous === 0) {
+      return null
     }
-  })
-
-  const filteredData = sortedData.filter((record) => {
-    if (filter === "all") return true
-    if (filter === "above-avg") return record.efficiency >= avgEfficiency
-    if (filter === "below-avg") return record.efficiency < avgEfficiency
-    return true
-  })
-
-  // Handle sort toggle
-  const toggleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortField(field)
-      setSortDirection("asc")
-    }
+    return ((current - previous) / previous) * 100
   }
 
-  // Handle data export
-  const exportData = () => {
-    const headers = ["Date", "Influent Flow (m³)", "Effluent Flow (m³)", "Efficiency (%)", "Energy Usage (kWh)", "Chemical Usage (kg)"]
-    const csvData = [
-      headers.join(","),
-      ...filteredData.map(record => 
-        [
-          record.date, 
-          record.influentFlow, 
-          record.effluentFlow, 
-          record.efficiency,
-          record.energyUsage,
-          record.chemicalUsage
-        ].join(",")
-      )
-    ].join("\n")
-    
-    const blob = new Blob([csvData], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `stp-data-${new Date().toLocaleDateString()}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+  // Function to get trend indicator
+  const getTrendIndicator = (change: number | null) => {
+    if (change === null) return { icon: <MinusIcon className="h-4 w-4 text-gray-400" />, color: "text-gray-400" }
+    if (change > 0) return { icon: <ArrowUpIcon className="h-4 w-4 text-green-500" />, color: "text-green-500" }
+    if (change < 0) return { icon: <ArrowDownIcon className="h-4 w-4 text-red-500" />, color: "text-red-500" }
+    return { icon: <MinusIcon className="h-4 w-4 text-gray-400" />, color: "text-gray-400" }
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <CardTitle className="text-lg font-medium">STP Plant Data Records</CardTitle>
-          <div className="flex items-center space-x-2">
-            <div className="flex border rounded-md">
-              <Button 
-                variant={currentTab === "current" ? "default" : "ghost"} 
-                className="h-9 rounded-r-none"
-                onClick={() => setCurrentTab("current")}
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 h-full">
+      <h3 className="text-lg font-medium text-gray-800 mb-4">{title}</h3>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                Current
-              </Button>
-              <Button 
-                variant={currentTab === "previous" ? "default" : "ghost"} 
-                className="h-9 rounded-l-none"
-                onClick={() => setCurrentTab("previous")}
+                Date
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                <GanttChartSquare className="h-4 w-4 mr-2" />
-                Previous Month
-              </Button>
-            </div>
-            <Select value={filter} onValueChange={(val: any) => setFilter(val)}>
-              <SelectTrigger className="w-40 h-9">
-                <SelectValue placeholder="Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Records</SelectItem>
-                <SelectItem value="above-avg">Above Avg Efficiency</SelectItem>
-                <SelectItem value="below-avg">Below Avg Efficiency</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={exportData}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px] cursor-pointer" onClick={() => toggleSort("date")}>
-                  <div className="flex items-center">
-                    Date
-                    {sortField === "date" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => toggleSort("influentFlow")}>
-                  <div className="flex items-center justify-end">
-                    Influent Flow (m³)
-                    {sortField === "influentFlow" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => toggleSort("effluentFlow")}>
-                  <div className="flex items-center justify-end">
-                    Effluent Flow (m³)
-                    {sortField === "effluentFlow" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => toggleSort("efficiency")}>
-                  <div className="flex items-center justify-end">
-                    Efficiency (%)
-                    {sortField === "efficiency" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => toggleSort("energyUsage")}>
-                  <div className="flex items-center justify-end">
-                    Energy (kWh)
-                    {sortField === "energyUsage" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => toggleSort("chemicalUsage")}>
-                  <div className="flex items-center justify-end">
-                    Chemicals (kg)
-                    {sortField === "chemicalUsage" && (
-                      sortDirection === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />
-                    )}
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
-                    No records matching the current filter.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredData.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">{record.date}</TableCell>
-                    <TableCell className="text-right">{record.influentFlow}</TableCell>
-                    <TableCell className="text-right">{record.effluentFlow}</TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                          record.efficiency >= avgEfficiency
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {record.efficiency}%
+                Influent Flow (m³)
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Effluent Flow (m³)
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Efficiency (%)
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Energy Usage (kWh)
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Chemical Usage (kg)
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {data.map((row, index) => {
+              const prevRow = previousData ? previousData[index] : undefined
+
+              const influentChange = calculateChange(row.influentFlow, prevRow?.influentFlow)
+              const effluentChange = calculateChange(row.effluentFlow, prevRow?.effluentFlow)
+              const efficiencyChange = calculateChange(row.efficiency, prevRow?.efficiency)
+              const energyChange = calculateChange(row.energyUsage, prevRow?.energyUsage)
+              const chemicalChange = calculateChange(row.chemicalUsage, prevRow?.chemicalUsage)
+
+              const influentTrend = getTrendIndicator(influentChange)
+              const effluentTrend = getTrendIndicator(effluentChange)
+              const efficiencyTrend = getTrendIndicator(efficiencyChange)
+              const energyTrend = getTrendIndicator(energyChange)
+              const chemicalTrend = getTrendIndicator(chemicalChange)
+
+              return (
+                <tr key={row.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <span className="mr-2">{safeFormat(row.influentFlow)}</span>
+                      <span className={influentTrend.color}>
+                        {influentTrend.icon}
+                        {influentChange !== null && (
+                          <span className="ml-1 text-xs">{safeFormat(Math.abs(influentChange))}</span>
+                        )}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right">{record.energyUsage}</TableCell>
-                    <TableCell className="text-right">{record.chemicalUsage}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-          <div>
-            Showing {filteredData.length} of {currentTab === "current" ? data.length : previousData.length} records
-          </div>
-          <div>
-            Average Efficiency: <span className="font-medium">{avgEfficiency.toFixed(1)}%</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <span className="mr-2">{safeFormat(row.effluentFlow)}</span>
+                      <span className={effluentTrend.color}>
+                        {effluentTrend.icon}
+                        {effluentChange !== null && (
+                          <span className="ml-1 text-xs">{safeFormat(Math.abs(effluentChange))}</span>
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <span className="mr-2">{safeFormat(row.efficiency)}</span>
+                      <span className={efficiencyTrend.color}>
+                        {efficiencyTrend.icon}
+                        {efficiencyChange !== null && (
+                          <span className="ml-1 text-xs">{safeFormat(Math.abs(efficiencyChange))}</span>
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <span className="mr-2">{safeFormat(row.energyUsage)}</span>
+                      <span className={energyTrend.color}>
+                        {energyTrend.icon}
+                        {energyChange !== null && (
+                          <span className="ml-1 text-xs">{safeFormat(Math.abs(energyChange))}</span>
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <span className="mr-2">{safeFormat(row.chemicalUsage)}</span>
+                      <span className={chemicalTrend.color}>
+                        {chemicalTrend.icon}
+                        {chemicalChange !== null && (
+                          <span className="ml-1 text-xs">{safeFormat(Math.abs(chemicalChange))}</span>
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      {data.length === 0 && <div className="text-center py-8 text-gray-500">No data available</div>}
+    </div>
   )
 }
