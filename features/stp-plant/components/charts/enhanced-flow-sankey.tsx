@@ -11,14 +11,45 @@ interface FlowSankeyProps {
 }
 
 export function EnhancedFlowSankey({ data }: FlowSankeyProps) {
-  // Transform data to be compatible with Nivo's Sankey
-  const transformedData = {
-    nodes: data.nodes.map(node => ({ id: node.name })),
-    links: data.links.map(link => ({
-      source: data.nodes[link.source]?.name || "Unknown",
-      target: data.nodes[link.target]?.name || "Unknown",
-      value: link.value,
+  // Create a safer version of the data with direct string IDs
+  // instead of relying on indexes that might be out of bounds
+  const safeNodes = data.nodes.map((node, index) => ({ 
+    id: `node_${index}`,
+    label: node.name || `Node ${index}`
+  }))
+  
+  const safeLinks = data.links
+    .filter(link => 
+      // Ensure source and target indexes are valid
+      typeof link.source === 'number' && 
+      typeof link.target === 'number' && 
+      link.source >= 0 && 
+      link.source < data.nodes.length &&
+      link.target >= 0 && 
+      link.target < data.nodes.length
+    )
+    .map(link => ({
+      source: `node_${link.source}`,
+      target: `node_${link.target}`,
+      value: link.value
     }))
+  
+  // Only render if we have valid data
+  const hasValidData = safeNodes.length > 0 && safeLinks.length > 0
+  
+  if (!hasValidData) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-medium">Water Flow Analysis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-96 flex items-center justify-center">
+            <p className="text-gray-500">Insufficient data for flow visualization</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -29,7 +60,10 @@ export function EnhancedFlowSankey({ data }: FlowSankeyProps) {
       <CardContent>
         <div className="h-96">
           <ResponsiveSankey
-            data={transformedData}
+            data={{
+              nodes: safeNodes,
+              links: safeLinks
+            }}
             margin={{ top: 40, right: 160, bottom: 40, left: 50 }}
             align="justify"
             colors={{ scheme: "blues" }}
@@ -49,13 +83,11 @@ export function EnhancedFlowSankey({ data }: FlowSankeyProps) {
             labelTextColor={{ from: "color", modifiers: [["darker", 1]] }}
             animate={true}
             motionConfig="gentle"
-            tooltip={({ node }) => {
-              return (
-                <div className="bg-white p-2 rounded-md border shadow-sm text-sm">
-                  <strong>{node.id}:</strong> {node.value.toLocaleString()} m³
-                </div>
-              )
-            }}
+            nodeTooltip={({ node }) => (
+              <div className="bg-white p-2 rounded-md border shadow-sm text-sm">
+                <strong>{node.label}:</strong> {node.value.toLocaleString()} m³
+              </div>
+            )}
           />
         </div>
       </CardContent>
