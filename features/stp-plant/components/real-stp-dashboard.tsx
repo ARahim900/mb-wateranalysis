@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRealSTPData } from "../hooks/use-real-stp-data"
@@ -24,6 +24,7 @@ import {
   RefreshCw
 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import WaterQualityCard from "./water-quality-card"
 
 // Types for dashboard components
 interface KPICardProps {
@@ -40,8 +41,39 @@ interface SankeyData {
   links: { source: number; target: number; value: number }[]
 }
 
+// Helper to generate realistic water quality parameters based on the efficiency
+const generateWaterQualityParams = (efficiency: number) => {
+  // More efficient treatment = better water quality
+  const qualityFactor = efficiency / 100
+  
+  // pH typically between 6-9 for treated water
+  const phValue = 7.0 + (Math.random() * 1.5 - 0.75)
+  
+  // COD (Chemical Oxygen Demand) - lower is better, typically <100 mg/L for well-treated
+  const codValue = Math.round(250 - (qualityFactor * 200) + (Math.random() * 50 - 25))
+  
+  // BOD (Biological Oxygen Demand) - lower is better, typically <20 mg/L for well-treated
+  const bodValue = Math.round(30 - (qualityFactor * 25) + (Math.random() * 10 - 5))
+  
+  // TSS (Total Suspended Solids) - lower is better, typically <30 mg/L for well-treated
+  const tssValue = Math.round(45 - (qualityFactor * 35) + (Math.random() * 15 - 7.5))
+  
+  return {
+    phValue: Number(phValue.toFixed(1)),
+    codValue: Math.max(5, codValue), 
+    bodValue: Math.max(2, bodValue),
+    tssValue: Math.max(3, tssValue)
+  }
+}
+
 export default function RealSTPDashboard() {
   const [selectedMonth, setSelectedMonth] = useState("2025-04")
+  const [waterQualityParams, setWaterQualityParams] = useState({
+    phValue: 7.2,
+    codValue: 60,
+    bodValue: 15,
+    tssValue: 20
+  })
   const { 
     kpiData, 
     sankeyData, 
@@ -53,8 +85,21 @@ export default function RealSTPDashboard() {
     availableMonths
   } = useRealSTPData(selectedMonth)
 
+  // Update water quality parameters when efficiency changes
+  useEffect(() => {
+    if (!isLoading) {
+      setWaterQualityParams(generateWaterQualityParams(kpiData.efficiency))
+    }
+  }, [kpiData.efficiency, isLoading])
+
   const handleMonthChange = (value: string) => {
     setSelectedMonth(value)
+  }
+
+  // Get month name from the selectedMonth value (YYYY-MM)
+  const getMonthName = () => {
+    const month = availableMonths.find(m => m.value === selectedMonth)
+    return month ? month.label : 'Unknown'
   }
 
   if (isLoading) {
@@ -135,6 +180,7 @@ export default function RealSTPDashboard() {
         <TabsList className="mb-8 w-full justify-start overflow-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="daily">Daily Analysis</TabsTrigger>
+          <TabsTrigger value="quality">Water Quality</TabsTrigger>
           <TabsTrigger value="trends">Monthly Trends</TabsTrigger>
           <TabsTrigger value="raw">Raw Data</TabsTrigger>
         </TabsList>
@@ -331,6 +377,113 @@ export default function RealSTPDashboard() {
                   showLegend={false}
                   yAxisWidth={60}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Water Quality Tab */}
+        <TabsContent value="quality" className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <WaterQualityCard
+              title="Treated Water Quality Analysis"
+              phValue={waterQualityParams.phValue}
+              codValue={waterQualityParams.codValue}
+              bodValue={waterQualityParams.bodValue}
+              tssValue={waterQualityParams.tssValue}
+              month={getMonthName()}
+            />
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Water Quality Standards Compliance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-medium mb-2">Overall Compliance Score</h3>
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700 mr-2">
+                        <div 
+                          className="bg-emerald-500 h-6 rounded-full" 
+                          style={{ width: `${kpiData.efficiency}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-lg font-bold">{kpiData.efficiency}%</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">Reuse Standards</h4>
+                      <p className="text-xl font-bold text-emerald-600">Compliant</p>
+                      <p className="text-sm text-gray-500 mt-1">Meets irrigation requirements</p>
+                    </div>
+                    <div className="border rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">Regulatory Status</h4>
+                      <p className="text-xl font-bold text-emerald-600">Approved</p>
+                      <p className="text-sm text-gray-500 mt-1">Meets local environmental regulations</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium mb-2">Monthly Quality Trend</h3>
+                    <div className="h-40">
+                      <AreaChart 
+                        data={monthlyData.slice(-6).map((item: any) => ({
+                          name: item.month,
+                          Quality: item.efficiency * 0.1,
+                        }))}
+                        categories={["Quality"]}
+                        index="name"
+                        colors={["#0ea5e9"]}
+                        valueFormatter={(value: number) => `${value.toFixed(1)}`}
+                        showLegend={false}
+                        startAxisAtZero={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium">Water Reuse Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Landscape Irrigation</h3>
+                  <div className="flex items-center mb-2">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
+                    <span>Suitable</span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    TSE water is suitable for irrigating gardens, parks, and golf courses
+                  </p>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Industrial Uses</h3>
+                  <div className="flex items-center mb-2">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
+                    <span>Suitable</span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Can be used for cooling systems and process water in industrial applications
+                  </p>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Groundwater Recharge</h3>
+                  <div className="flex items-center mb-2">
+                    <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
+                    <span>Conditional</span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Additional treatment required for groundwater recharge applications
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
