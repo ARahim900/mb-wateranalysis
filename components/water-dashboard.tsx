@@ -1205,40 +1205,79 @@ export default function WaterDashboard() {
               {/* Zone Loss Radial Bar Chart */}
               <Card className="p-5">
                 <h2 className="text-lg font-semibold text-gray-700 mb-4">Loss to Supply Ratio</h2>
-                <div className="h-96" aria-label="Loss to supply ratio radial bar chart">
-                  <ResponsiveContainer width="100%" height={400}>
-                    <RadialBarChart
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={30}
-                      outerRadius={160}
-                      barSize={15}
-                      data={zonePerformanceData}
+                <ResponsiveContainer width="100%" height={400}>
+                  <RadialBarChart
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={160}
+                    barSize={20}
+                    data={zonePerformanceData}
+                    startAngle={180}
+                    endAngle={0}
+                  >
+                    <PolarGrid gridType="circle" />
+                    <PolarAngleAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fill: "#4E4456", fontSize: 12 }}
+                      tickLine={{ stroke: "#4E4456" }}
+                    />
+                    <PolarRadiusAxis angle={90} domain={[0, "auto"]} />
+                    <RadialBar
+                      minAngle={15}
+                      background={{ fill: "#f8f9fa" }}
+                      dataKey="loss"
+                      cornerRadius={8}
+                      label={{
+                        position: "insideStart",
+                        fill: "#fff",
+                        fontSize: 12,
+                        fontWeight: "bold",
+                        formatter: (value) => `${value.toFixed(0)}m³`,
+                      }}
                     >
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="name" type="category" tick={{ fill: "#4E4456" }} />
-                      <PolarRadiusAxis angle={0} domain={[0, "auto"]} />
-                      <RadialBar
-                        minAngle={15}
-                        background={{ fill: "#f8f9fa" }}
-                        label={{ position: "insideStart", fill: "#fff", fontSize: 12, fontWeight: "bold" }}
-                        dataKey="loss"
-                      >
-                        {zonePerformanceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={ZONE_COLORS[index % ZONE_COLORS.length]} />
-                        ))}
-                      </RadialBar>
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend
-                        iconSize={10}
-                        layout="vertical"
-                        verticalAlign="middle"
-                        align="right"
-                        formatter={(value, entry) => <span style={{ color: "#4E4456" }}>{value}</span>}
-                      />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                </div>
+                      {zonePerformanceData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={ZONE_COLORS[index % ZONE_COLORS.length]}
+                          stroke={ZONE_COLORS[index % ZONE_COLORS.length]}
+                          strokeWidth={1}
+                        />
+                      ))}
+                    </RadialBar>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
+                              <p className="font-medium text-gray-700">{data.name}</p>
+                              <p className="text-sm">
+                                Loss: <span className="font-medium">{data.loss.toLocaleString()} m³</span>
+                              </p>
+                              <p className="text-sm">
+                                Supply: <span className="font-medium">{data.bulk.toLocaleString()} m³</span>
+                              </p>
+                              <p className="text-sm">
+                                Loss Ratio:{" "}
+                                <span className="font-medium">{((data.loss / data.bulk) * 100).toFixed(1)}%</span>
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Legend
+                      iconSize={10}
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                      wrapperStyle={{ paddingLeft: "10px" }}
+                    />
+                  </RadialBarChart>
+                </ResponsiveContainer>
               </Card>
             </div>
           </TabsContent>
