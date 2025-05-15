@@ -1,817 +1,614 @@
-"use client"
-
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { LineChart, BarChart, DonutChart, PieChart } from "@/components/ui/charts"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { BarChart, LineChart } from "@/components/ui/charts"
-import { Badge } from "@/components/ui/badge"
 import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  LineChart as LineChartIcon, 
-  ZapIcon, 
-  FlaskConical, 
-  Gauge, 
-  BarChart4,
-  ArrowUpRight,
-  ArrowDownRight
+  BarChart3Icon,
+  Zap,
+  FlaskConical,
+  TreeDeciduous,
+  ThermometerIcon,
+  Droplets,
+  GaugeIcon,
+  Timer,
+  Wind,
+  CircleDollarSign,
+  RefreshCw,
+  AlertTriangle,
+  Download,
+  ArrowUpDown
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
-interface OperationalAnalyticsProps {
-  operationalData: {
-    energyConsumption: number
-    chemicalUsage: number
-    biosolidsProduction: number
-    operatingCost: number
-    aerationRate: number
-    sludgeProcessed: number
-    retentionTime: number
-    temperature: number
-    dissolvedOxygen: number
-    sludgeReturnRate: number
-    mlssConcentration: number
-    fmRatio: number
-    svi: number
-    pressure: number
-  }
-  dailyData: any[]
-  monthlyData: any[]
+interface OperationalData {
+  energyConsumption: number
+  chemicalUsage: number
+  biosolidsProduction: number
+  operatingCost: number
+  aerationRate: number
+  sludgeProcessed: number
+  retentionTime: number
+  temperature: number
+  dissolvedOxygen: number
+  sludgeReturnRate: number
+  mlssConcentration: number
+  fmRatio: number
+  svi: number
+  pressure: number
 }
 
-export function OperationalAnalytics({ 
-  operationalData, 
+interface DailyData {
+  day: string
+  flowRate: number
+  efficiency: number
+  utilization: number
+}
+
+interface MonthlyData {
+  month: string
+  flowRate: number
+  efficiency: number
+  utilization: number
+}
+
+interface OperationalAnalyticsProps {
+  operationalData: OperationalData
+  dailyData: DailyData[]
+  monthlyData: MonthlyData[]
+}
+
+export default function OperationalAnalytics({
+  operationalData,
   dailyData,
   monthlyData
 }: OperationalAnalyticsProps) {
-  const [selectedResourceMetric, setSelectedResourceMetric] = useState("energy")
   
-  // Calculate energy efficiency (kWh per m³ of treated water)
-  // Assuming 500 m³ per day as average treated volume
-  const energyEfficiency = operationalData.energyConsumption / 500
-  
-  // Calculate chemical efficiency (kg per m³ of treated water)
-  const chemicalEfficiency = operationalData.chemicalUsage / 500
-  
-  // Generate daily resource usage data (for demonstration)
-  const generateResourceData = () => {
-    const baseValue = selectedResourceMetric === "energy" 
-      ? operationalData.energyConsumption 
-      : selectedResourceMetric === "chemical" 
-        ? operationalData.chemicalUsage 
-        : operationalData.biosolidsProduction * 1000 // convert to kg
+  // Calculate key operational metrics
+  const calculateOperationalMetrics = () => {
+    // Generate synthetic data for energy efficiency
+    const energyEfficiency = Math.round((operationalData.energyConsumption / dailyData.reduce((sum, day) => sum + day.flowRate, 0) / dailyData.length) * 100) / 100
     
-    return Array.from({ length: 14 }, (_, i) => {
-      // Random variation within ±10%
-      const dailyValue = baseValue * (0.9 + Math.random() * 0.2)
+    // Generate synthetic data for chemical dosing rate
+    const chemicalDosingRate = Math.round((operationalData.chemicalUsage / dailyData.reduce((sum, day) => sum + day.flowRate, 0) / dailyData.length) * 1000) / 10
+    
+    // Generate synthetic data for biosolids yield
+    const biosolidsYield = operationalData.biosolidsProduction / operationalData.sludgeProcessed
+    
+    // Average plant utilization
+    const averageUtilization = Math.round(dailyData.reduce((sum, day) => sum + day.utilization, 0) / dailyData.length)
+    
+    // Average treatment efficiency
+    const averageEfficiency = Math.round(dailyData.reduce((sum, day) => sum + day.efficiency, 0) / dailyData.length)
+    
+    return {
+      energyEfficiency,
+      chemicalDosingRate,
+      biosolidsYield,
+      averageUtilization,
+      averageEfficiency
+    }
+  }
+  
+  const operationalMetrics = calculateOperationalMetrics()
+  
+  // Generate synthetic time series data for energy consumption
+  const generateEnergyTimeSeriesData = () => {
+    // Use daily data time points but generate synthetic energy data
+    return dailyData.map((day, index) => {
+      // Base the energy consumption partly on the flow rate and efficiency
+      const flowFactor = day.flowRate / 500 // Normalized to typical flow
+      const efficiencyFactor = day.efficiency / 100
+      
+      // Add some random variation
+      const randomVariation = (Math.random() * 0.2) - 0.1 // -10% to +10%
+      
+      const energyConsumption = Math.round(3000 * flowFactor * (1 - (efficiencyFactor * 0.2)) * (1 + randomVariation))
       
       return {
-        day: `Day ${i + 1}`,
-        usage: Number(dailyValue.toFixed(0)),
-        target: selectedResourceMetric === "energy" 
-          ? 3000 
-          : selectedResourceMetric === "chemical" 
-            ? 140 
-            : 3000 // biosolids target in kg
+        day: day.day,
+        energy: energyConsumption,
+        trend: index > 0 ? 3000 + (index * 20) - (index * index * 0.5) : 3000, // A curved trend line
       }
     })
   }
   
-  // Process performance indicators
-  const processPerformance = [
-    {
-      name: "MLSS Concentration",
-      value: operationalData.mlssConcentration,
-      unit: "mg/L",
-      target: "2,500-3,500 mg/L",
-      status: operationalData.mlssConcentration >= 2500 && operationalData.mlssConcentration <= 3500 
-        ? "optimal" 
-        : "suboptimal"
-    },
-    {
-      name: "F/M Ratio",
-      value: operationalData.fmRatio,
-      unit: "d⁻¹",
-      target: "0.15-0.25 d⁻¹",
-      status: operationalData.fmRatio >= 0.15 && operationalData.fmRatio <= 0.25 
-        ? "optimal" 
-        : "suboptimal"
-    },
-    {
-      name: "Sludge Volume Index",
-      value: operationalData.svi,
-      unit: "mL/g",
-      target: "100-150 mL/g",
-      status: operationalData.svi >= 100 && operationalData.svi <= 150 
-        ? "optimal" 
-        : "suboptimal"
-    },
-    {
-      name: "Dissolved Oxygen",
-      value: operationalData.dissolvedOxygen,
-      unit: "mg/L",
-      target: "2.0-4.0 mg/L",
-      status: operationalData.dissolvedOxygen >= 2.0 && operationalData.dissolvedOxygen <= 4.0 
-        ? "optimal" 
-        : "suboptimal"
-    },
-    {
-      name: "Retention Time",
-      value: operationalData.retentionTime,
-      unit: "hours",
-      target: "12-24 hours",
-      status: operationalData.retentionTime >= 12 && operationalData.retentionTime <= 24 
-        ? "optimal" 
-        : "suboptimal"
-    },
-    {
-      name: "Return Activated Sludge Rate",
-      value: operationalData.sludgeReturnRate,
-      unit: "%",
-      target: "25-50%",
-      status: operationalData.sludgeReturnRate >= 25 && operationalData.sludgeReturnRate <= 50 
-        ? "optimal" 
-        : "suboptimal"
-    }
+  const energyTimeSeriesData = generateEnergyTimeSeriesData()
+  
+  // Generate resource distribution data
+  const resourceDistribution = [
+    { name: "Aeration", value: Math.round(operationalData.energyConsumption * 0.65), color: "#3b82f6" },
+    { name: "Pumping", value: Math.round(operationalData.energyConsumption * 0.20), color: "#10b981" },
+    { name: "Mixing", value: Math.round(operationalData.energyConsumption * 0.08), color: "#f59e0b" },
+    { name: "Other", value: Math.round(operationalData.energyConsumption * 0.07), color: "#8b5cf6" }
   ]
   
-  // Operational KPIs
-  const operationalKPIs = [
-    {
-      name: "Energy Efficiency",
-      value: energyEfficiency.toFixed(2),
-      unit: "kWh/m³",
-      target: "< 0.7 kWh/m³",
-      status: energyEfficiency < 0.7 ? "good" : energyEfficiency < 0.9 ? "average" : "poor",
-      change: -5.3,
-      icon: <ZapIcon className="h-5 w-5 text-purple-500" />
-    },
-    {
-      name: "Chemical Efficiency",
-      value: chemicalEfficiency.toFixed(2),
-      unit: "kg/m³",
-      target: "< 0.35 kg/m³",
-      status: chemicalEfficiency < 0.35 ? "good" : chemicalEfficiency < 0.5 ? "average" : "poor",
-      change: -2.1,
-      icon: <FlaskConical className="h-5 w-5 text-pink-500" />
-    },
-    {
-      name: "Operational Uptime",
-      value: "99.4",
-      unit: "%",
-      target: "> 98%",
-      status: "good",
-      change: 0.7,
-      icon: <Gauge className="h-5 w-5 text-emerald-500" />
-    },
-    {
-      name: "Cost Efficiency",
-      value: (operationalData.operatingCost / 500).toFixed(2),
-      unit: "OMR/m³",
-      target: "< 1.0 OMR/m³",
-      status: (operationalData.operatingCost / 500) < 1.0 ? "good" : "average",
-      change: -3.8,
-      icon: <BarChart4 className="h-5 w-5 text-blue-500" />
-    }
+  // Generate cost distribution data
+  const costDistribution = [
+    { name: "Energy", value: operationalData.operatingCost * 0.4, color: "#3b82f6" },
+    { name: "Chemicals", value: operationalData.operatingCost * 0.2, color: "#10b981" },
+    { name: "Labor", value: operationalData.operatingCost * 0.25, color: "#f59e0b" },
+    { name: "Maintenance", value: operationalData.operatingCost * 0.15, color: "#8b5cf6" }
   ]
   
+  // Function to get status badge for operational parameters
+  const getParameterStatus = (parameter: string, value: number) => {
+    switch(parameter) {
+      case "DO":
+        if (value >= 2 && value <= 4) return "Optimal"
+        if ((value > 4 && value <= 6) || (value >= 1.5 && value < 2)) return "Acceptable"
+        return "Suboptimal"
+      case "MLSS":
+        if (value >= 2500 && value <= 3500) return "Optimal"
+        if ((value > 3500 && value <= 4500) || (value >= 1500 && value < 2500)) return "Acceptable"
+        return "Suboptimal"
+      case "F/M":
+        if (value >= 0.05 && value <= 0.15) return "Optimal"
+        if ((value > 0.15 && value <= 0.3) || (value >= 0.03 && value < 0.05)) return "Acceptable"
+        return "Suboptimal"
+      case "SVI":
+        if (value >= 80 && value <= 150) return "Optimal"
+        if ((value > 150 && value <= 200) || (value >= 50 && value < 80)) return "Acceptable"
+        return "Suboptimal"
+      case "SRT":
+        if (value >= 8 && value <= 20) return "Optimal"
+        if ((value > 20 && value <= 30) || (value >= 5 && value < 8)) return "Acceptable"
+        return "Suboptimal"
+      default:
+        return "Unknown"
+    }
+  }
+  
+  // Function to get status badge color
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case "Optimal":
+        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+          Optimal
+        </Badge>
+      case "Acceptable":
+        return <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+          Acceptable
+        </Badge>
+      case "Suboptimal":
+        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+          Suboptimal
+        </Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Resource Consumption Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {operationalKPIs.map((kpi, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{kpi.name}</p>
-                  <div className="flex items-baseline mt-1">
-                    <h3 className="text-2xl font-bold">{kpi.value}</h3>
-                    <span className="ml-1 text-sm">{kpi.unit}</span>
-                  </div>
-                </div>
-                <div className={`p-2 rounded-full bg-opacity-10 ${
-                  kpi.status === "good" ? "bg-emerald-100" : 
-                  kpi.status === "average" ? "bg-amber-100" : 
-                  "bg-red-100"
-                }`}>
-                  {kpi.icon}
+        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">ENERGY CONSUMPTION</p>
+                <div className="flex items-baseline mt-1">
+                  <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-300">{operationalData.energyConsumption}</h3>
+                  <span className="ml-1 text-sm text-blue-600 dark:text-blue-400">kWh/day</span>
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    {kpi.change > 0 ? (
-                      <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <ArrowDownRight className="h-4 w-4 text-emerald-500" />
-                    )}
-                    <span className={`ml-1 text-sm font-medium ${
-                      (kpi.name === "Energy Efficiency" || kpi.name === "Chemical Efficiency" || kpi.name === "Cost Efficiency") 
-                        ? (kpi.change < 0 ? "text-emerald-500" : "text-red-500")
-                        : (kpi.change > 0 ? "text-emerald-500" : "text-red-500")
-                    }`}>
-                      {Math.abs(kpi.change)}%
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500">Target: {kpi.target}</span>
-                </div>
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-800">
+                <Zap className="h-5 w-5 text-blue-600 dark:text-blue-300" />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      <Tabs defaultValue="operational">
-        <TabsList className="mb-4">
-          <TabsTrigger value="operational">Process Parameters</TabsTrigger>
-          <TabsTrigger value="resource">Resource Usage</TabsTrigger>
-          <TabsTrigger value="process">Process Performance</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="operational" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Key Process Parameters</CardTitle>
-              <CardDescription>Current operational conditions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="relative overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Parameter</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Target Range</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {processPerformance.map((param, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{param.name}</TableCell>
-                        <TableCell>{param.value} {param.unit}</TableCell>
-                        <TableCell>{param.target}</TableCell>
-                        <TableCell>
-                          {param.status === "optimal" ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                              <CheckCircle2 className="h-3 w-3 mr-1" /> Optimal
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-amber-50 text-amber-700 border-amber-200">
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Needs Adjustment
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Aeration Parameters</CardTitle>
-                <CardDescription>Critical process control factors</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Aeration Rate</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.aerationRate} m³/hr
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={(operationalData.aerationRate / 100) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${80}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Min: 60 m³/hr</span>
-                      <span className="text-xs text-gray-500">Optimal: 80 m³/hr</span>
-                      <span className="text-xs text-gray-500">Max: 100 m³/hr</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Dissolved Oxygen</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.dissolvedOxygen} mg/L
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={(operationalData.dissolvedOxygen / 5) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${40}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${80}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Low: 2 mg/L</span>
-                      <span className="text-xs text-gray-500">Optimal: 2-4 mg/L</span>
-                      <span className="text-xs text-gray-500">High: >4 mg/L</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Temperature</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.temperature}°C
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={((operationalData.temperature - 15) / 20) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${25}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${75}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Low: 15°C</span>
-                      <span className="text-xs text-gray-500">Optimal: 20-30°C</span>
-                      <span className="text-xs text-gray-500">High: 35°C</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Sludge Management</CardTitle>
-                <CardDescription>Activated sludge process metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">MLSS Concentration</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.mlssConcentration} mg/L
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={(operationalData.mlssConcentration / 4000) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${62.5}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${87.5}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Low: <2,000 mg/L</span>
-                      <span className="text-xs text-gray-500">Optimal: 2,500-3,500 mg/L</span>
-                      <span className="text-xs text-gray-500">High: >4,000 mg/L</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Sludge Return Rate</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.sludgeReturnRate}%
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={(operationalData.sludgeReturnRate / 60) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${41.7}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${83.3}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Low: <25%</span>
-                      <span className="text-xs text-gray-500">Optimal: 25-50%</span>
-                      <span className="text-xs text-gray-500">High: >50%</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">F/M Ratio</span>
-                      <span className="text-sm font-medium">
-                        {operationalData.fmRatio} d⁻¹
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={(operationalData.fmRatio / 0.4) * 100} 
-                        className="h-2" 
-                      />
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${37.5}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-2 border-r border-emerald-500" 
-                        style={{ left: `${62.5}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Low: <0.15 d⁻¹</span>
-                      <span className="text-xs text-gray-500">Optimal: 0.15-0.25 d⁻¹</span>
-                      <span className="text-xs text-gray-500">High: >0.3 d⁻¹</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="resource" className="space-y-4">
-          <div className="flex items-center justify-end mb-4">
-            <div className="flex gap-2">
-              <Badge 
-                variant="outline" 
-                className={selectedResourceMetric === "energy" ? "bg-blue-50 text-blue-700" : ""}
-                onClick={() => setSelectedResourceMetric("energy")}
-              >
-                <ZapIcon className="h-3 w-3 mr-1" /> Energy
-              </Badge>
-              <Badge 
-                variant="outline" 
-                className={selectedResourceMetric === "chemical" ? "bg-blue-50 text-blue-700" : ""}
-                onClick={() => setSelectedResourceMetric("chemical")}
-              >
-                <FlaskConical className="h-3 w-3 mr-1" /> Chemicals
-              </Badge>
-              <Badge 
-                variant="outline" 
-                className={selectedResourceMetric === "biosolids" ? "bg-blue-50 text-blue-700" : ""}
-                onClick={() => setSelectedResourceMetric("biosolids")}
-              >
-                <ZapIcon className="h-3 w-3 mr-1" /> Biosolids
-              </Badge>
             </div>
-          </div>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">
-                {selectedResourceMetric === "energy" 
-                  ? "Energy Consumption Trend" 
-                  : selectedResourceMetric === "chemical" 
-                    ? "Chemical Usage Trend" 
-                    : "Biosolids Production Trend"}
-              </CardTitle>
-              <CardDescription>
-                {selectedResourceMetric === "energy" 
-                  ? "Daily power consumption (kWh)" 
-                  : selectedResourceMetric === "chemical" 
-                    ? "Daily chemical consumption (kg)" 
-                    : "Daily biosolids production (kg)"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <LineChart
-                  data={generateResourceData()}
-                  index="day"
-                  categories={["usage", "target"]}
-                  colors={["blue", "red"]}
-                  valueFormatter={(value) => 
-                    `${value} ${
-                      selectedResourceMetric === "energy" 
-                        ? "kWh" 
-                        : selectedResourceMetric === "chemical" 
-                          ? "kg" 
-                          : "kg"
-                    }`
-                  }
-                  showLegend={true}
-                  showXAxis={true}
-                  showYAxis={true}
-                  yAxisWidth={60}
-                />
+            <div className="mt-4">
+              <div className="flex items-center">
+                <span className="text-sm text-blue-600 dark:text-blue-400">
+                  {operationalMetrics.energyEfficiency.toFixed(2)} kWh/m³
+                </span>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-blue-500 mr-1"></div>
-                  <span>Actual Usage</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-red-500 mr-1"></div>
-                  <span>Target Threshold</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Energy Profile</CardTitle>
-                <CardDescription>Distribution by usage area</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-60">
-                  <BarChart
-                    data={[
-                      { category: "Aeration", value: 45 },
-                      { category: "Pumping", value: 20 },
-                      { category: "UV Disinfection", value: 15 },
-                      { category: "Sludge Treatment", value: 12 },
-                      { category: "Other", value: 8 }
-                    ]}
-                    index="category"
-                    categories={["value"]}
-                    colors={["blue"]}
-                    valueFormatter={(value) => `${value}%`}
-                    stack={true}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Chemical Usage</CardTitle>
-                <CardDescription>Distribution by type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-60">
-                  <BarChart
-                    data={[
-                      { category: "Coagulants", value: 35 },
-                      { category: "pH Adjusters", value: 25 },
-                      { category: "Disinfectants", value: 20 },
-                      { category: "Polymers", value: 15 },
-                      { category: "Other", value: 5 }
-                    ]}
-                    index="category"
-                    categories={["value"]}
-                    colors={["emerald"]}
-                    valueFormatter={(value) => `${value}%`}
-                    stack={true}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Operating Costs</CardTitle>
-                <CardDescription>Distribution by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-60">
-                  <BarChart
-                    data={[
-                      { category: "Energy", value: 35 },
-                      { category: "Chemicals", value: 22 },
-                      { category: "Labor", value: 25 },
-                      { category: "Maintenance", value: 12 },
-                      { category: "Other", value: 6 }
-                    ]}
-                    index="category"
-                    categories={["value"]}
-                    colors={["amber"]}
-                    valueFormatter={(value) => `${value}%`}
-                    stack={true}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+            </div>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="process" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Process Efficiency Analysis</CardTitle>
-              <CardDescription>Treatment process performance trends</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <LineChart
-                  data={[
-                    { month: "Jan", organic: 85, removal: 92, settlability: 88 },
-                    { month: "Feb", organic: 87, removal: 93, settlability: 89 },
-                    { month: "Mar", organic: 89, removal: 94, settlability: 90 },
-                    { month: "Apr", organic: 91, removal: 95, settlability: 92 },
-                    { month: "May", organic: 92, removal: 94, settlability: 91 }
-                  ]}
-                  index="month"
-                  categories={["organic", "removal", "settlability"]}
-                  colors={["blue", "green", "amber"]}
-                  valueFormatter={(value) => `${value}%`}
-                  showLegend={true}
-                  showXAxis={true}
-                  showYAxis={true}
-                  yAxisWidth={48}
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between text-sm text-gray-500">
-                <div className="flex items-center mr-4 mb-2">
-                  <div className="h-3 w-3 rounded-full bg-blue-500 mr-1"></div>
-                  <span>Organic Removal Efficiency</span>
-                </div>
-                <div className="flex items-center mr-4 mb-2">
-                  <div className="h-3 w-3 rounded-full bg-green-500 mr-1"></div>
-                  <span>Solids Removal Efficiency</span>
-                </div>
-                <div className="flex items-center mb-2">
-                  <div className="h-3 w-3 rounded-full bg-amber-500 mr-1"></div>
-                  <span>Sludge Settlability Index</span>
+        <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">CHEMICAL USAGE</p>
+                <div className="flex items-baseline mt-1">
+                  <h3 className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{operationalData.chemicalUsage}</h3>
+                  <span className="ml-1 text-sm text-emerald-600 dark:text-emerald-400">kg/day</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Process Control Recommendations</CardTitle>
-                <CardDescription>Optimization suggestions based on current parameters</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center mb-2">
-                      <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mr-2">
-                        1
-                      </div>
-                      <h3 className="font-medium">Adjust MLSS Concentration</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {operationalData.mlssConcentration > 3500 
-                        ? "Current MLSS concentration is above optimal range. Consider increasing wasting rate to reduce MLSS to 3,000-3,200 mg/L for better settleability and oxygen transfer efficiency."
-                        : operationalData.mlssConcentration < 2500
-                          ? "Current MLSS concentration is below optimal range. Consider decreasing wasting rate to increase MLSS to 2,800-3,000 mg/L for better treatment performance."
-                          : "MLSS concentration is within optimal range. Maintain current wasting rate to sustain good process performance."}
-                    </p>
+              <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-800">
+                <FlaskConical className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center">
+                <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                  {operationalMetrics.chemicalDosingRate.toFixed(1)} g/m³
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">BIOSOLIDS PRODUCTION</p>
+                <div className="flex items-baseline mt-1">
+                  <h3 className="text-2xl font-bold text-amber-700 dark:text-amber-300">{operationalData.biosolidsProduction}</h3>
+                  <span className="ml-1 text-sm text-amber-600 dark:text-amber-400">tons/day</span>
+                </div>
+              </div>
+              <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-800">
+                <TreeDeciduous className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center">
+                <span className="text-sm text-amber-600 dark:text-amber-400">
+                  {operationalMetrics.biosolidsYield.toFixed(2)} kg/kg BOD
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">OPERATING COST</p>
+                <div className="flex items-baseline mt-1">
+                  <h3 className="text-2xl font-bold text-red-700 dark:text-red-300">{operationalData.operatingCost}</h3>
+                  <span className="ml-1 text-sm text-red-600 dark:text-red-400">$/day</span>
+                </div>
+              </div>
+              <div className="p-2 rounded-full bg-red-100 dark:bg-red-800">
+                <CircleDollarSign className="h-5 w-5 text-red-600 dark:text-red-300" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center">
+                <span className="text-sm text-red-600 dark:text-red-400">
+                  {(operationalData.operatingCost / (dailyData.reduce((sum, day) => sum + day.flowRate, 0) / dailyData.length)).toFixed(2)} $/m³
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Energy Consumption Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-medium flex items-center">
+                <BarChart3Icon className="h-5 w-5 mr-2 text-blue-600" />
+                Energy Consumption Trends
+              </CardTitle>
+              <Button variant="outline" size="sm" className="h-8">
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+            </div>
+            <CardDescription>
+              Daily energy usage patterns
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <LineChart 
+                data={energyTimeSeriesData}
+                index="day"
+                categories={["energy", "trend"]}
+                colors={["blue", "red"]}
+                valueFormatter={(value) => `${value.toLocaleString()} kWh`}
+                showLegend={true}
+                yAxisWidth={60}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-blue-600" />
+              Energy Distribution
+            </CardTitle>
+            <CardDescription>
+              Breakdown by process
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-60">
+              <PieChart 
+                data={resourceDistribution}
+                category="value"
+                index="name"
+                valueFormatter={(value) => `${value.toLocaleString()} kWh`}
+                className="h-60"
+              />
+            </div>
+            <div className="mt-4 space-y-3">
+              {resourceDistribution.map((item, index) => (
+                <div key={index} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2" 
+                      style={{ backgroundColor: item.color }}
+                    ></div>
+                    <span>{item.name}</span>
                   </div>
-                  
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center mb-2">
-                      <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mr-2">
-                        2
-                      </div>
-                      <h3 className="font-medium">Optimize Aeration Rate</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {operationalData.dissolvedOxygen > 4.0 
-                        ? "Dissolved oxygen levels are higher than necessary. Consider reducing aeration rate to save energy while maintaining DO between 2.0-3.0 mg/L in aeration basins."
-                        : operationalData.dissolvedOxygen < 2.0
-                          ? "Dissolved oxygen levels are below optimal range. Increase aeration rate to maintain DO between 2.0-3.0 mg/L to ensure sufficient biological activity."
-                          : "Dissolved oxygen levels are within optimal range. Continue monitoring to maintain sufficient biological activity while minimizing energy consumption."}
-                    </p>
-                  </div>
-                  
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center mb-2">
-                      <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mr-2">
-                        3
-                      </div>
-                      <h3 className="font-medium">Adjust Return Sludge Flow</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {operationalData.sludgeReturnRate > 50 
-                        ? "Return activated sludge (RAS) flow rate is higher than optimal. Consider reducing RAS rate to 30-40% of influent flow to improve settling in the clarifiers."
-                        : operationalData.sludgeReturnRate < 25
-                          ? "Return activated sludge (RAS) flow rate is lower than optimal. Consider increasing RAS rate to 30-40% of influent flow to maintain adequate MLSS in aeration basins."
-                          : "Return activated sludge (RAS) flow rate is within optimal range. Maintain current rate to ensure proper operation of the activated sludge process."}
-                    </p>
+                  <div className="font-medium">
+                    <span>{Math.round((item.value / operationalData.energyConsumption) * 100)}%</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Process Performance Metrics</CardTitle>
-                <CardDescription>Key performance indicators for biological treatment</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">BOD Removal Efficiency</span>
-                      <span className="text-sm font-medium">94.5%</span>
-                    </div>
-                    <Progress value={94.5} className="h-2" />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Target: >90%</span>
-                      <span className={`text-xs ${94.5 >= 90 ? "text-emerald-500" : "text-amber-500"}`}>
-                        {94.5 >= 90 ? "Meeting Target" : "Below Target"}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">TSS Removal Efficiency</span>
-                      <span className="text-sm font-medium">96.2%</span>
-                    </div>
-                    <Progress value={96.2} className="h-2" />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Target: >92%</span>
-                      <span className={`text-xs ${96.2 >= 92 ? "text-emerald-500" : "text-amber-500"}`}>
-                        {96.2 >= 92 ? "Meeting Target" : "Below Target"}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Nitrogen Removal Efficiency</span>
-                      <span className="text-sm font-medium">86.8%</span>
-                    </div>
-                    <Progress value={86.8} className="h-2" />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Target: >80%</span>
-                      <span className={`text-xs ${86.8 >= 80 ? "text-emerald-500" : "text-amber-500"}`}>
-                        {86.8 >= 80 ? "Meeting Target" : "Below Target"}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Phosphorus Removal Efficiency</span>
-                      <span className="text-sm font-medium">83.5%</span>
-                    </div>
-                    <Progress value={83.5} className="h-2" />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Target: >75%</span>
-                      <span className={`text-xs ${83.5 >= 75 ? "text-emerald-500" : "text-amber-500"}`}>
-                        {83.5 >= 75 ? "Meeting Target" : "Below Target"}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Hydraulic Retention Time</span>
-                      <span className="text-sm font-medium">{operationalData.retentionTime} hrs</span>
-                    </div>
-                    <Progress 
-                      value={(operationalData.retentionTime / 24) * 100} 
-                      className="h-2" 
-                    />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">Target: 12-24 hrs</span>
-                      <span className={`text-xs ${
-                        operationalData.retentionTime >= 12 && operationalData.retentionTime <= 24 
-                          ? "text-emerald-500" 
-                          : "text-amber-500"
-                      }`}>
-                        {operationalData.retentionTime >= 12 && operationalData.retentionTime <= 24 
-                          ? "Optimal Range" 
-                          : operationalData.retentionTime < 12 
-                            ? "Too Short" 
-                            : "Too Long"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Operational Parameters */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-medium flex items-center">
+            <GaugeIcon className="h-5 w-5 mr-2 text-blue-600" />
+            Biological Process Parameters
+          </CardTitle>
+          <CardDescription>
+            Current operational parameters and status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="relative overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Parameter</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Optimal Range</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">Dissolved Oxygen (DO)</TableCell>
+                  <TableCell>{operationalData.dissolvedOxygen.toFixed(1)}</TableCell>
+                  <TableCell>mg/L</TableCell>
+                  <TableCell>2.0 - 4.0 mg/L</TableCell>
+                  <TableCell>
+                    {getStatusBadge(getParameterStatus("DO", operationalData.dissolvedOxygen))}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">MLSS Concentration</TableCell>
+                  <TableCell>{operationalData.mlssConcentration}</TableCell>
+                  <TableCell>mg/L</TableCell>
+                  <TableCell>2,500 - 3,500 mg/L</TableCell>
+                  <TableCell>
+                    {getStatusBadge(getParameterStatus("MLSS", operationalData.mlssConcentration))}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">F/M Ratio</TableCell>
+                  <TableCell>{operationalData.fmRatio.toFixed(2)}</TableCell>
+                  <TableCell>kg BOD/kg MLSS·d</TableCell>
+                  <TableCell>0.05 - 0.15</TableCell>
+                  <TableCell>
+                    {getStatusBadge(getParameterStatus("F/M", operationalData.fmRatio))}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Sludge Volume Index (SVI)</TableCell>
+                  <TableCell>{operationalData.svi}</TableCell>
+                  <TableCell>mL/g</TableCell>
+                  <TableCell>80 - 150 mL/g</TableCell>
+                  <TableCell>
+                    {getStatusBadge(getParameterStatus("SVI", operationalData.svi))}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Hydraulic Retention Time (HRT)</TableCell>
+                  <TableCell>{operationalData.retentionTime.toFixed(1)}</TableCell>
+                  <TableCell>hours</TableCell>
+                  <TableCell>8 - 20 hours</TableCell>
+                  <TableCell>
+                    {getStatusBadge(getParameterStatus("SRT", operationalData.retentionTime))}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Sludge Return Rate</TableCell>
+                  <TableCell>{operationalData.sludgeReturnRate}</TableCell>
+                  <TableCell>%</TableCell>
+                  <TableCell>25 - 50%</TableCell>
+                  <TableCell>
+                    {getStatusBadge(operationalData.sludgeReturnRate >= 25 && operationalData.sludgeReturnRate <= 50 
+                      ? "Optimal" 
+                      : (operationalData.sludgeReturnRate >= 15 && operationalData.sludgeReturnRate < 25) || 
+                        (operationalData.sludgeReturnRate > 50 && operationalData.sludgeReturnRate <= 70)
+                      ? "Acceptable"
+                      : "Suboptimal")}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Aeration Tank Temperature</TableCell>
+                  <TableCell>{operationalData.temperature.toFixed(1)}</TableCell>
+                  <TableCell>°C</TableCell>
+                  <TableCell>15 - 30 °C</TableCell>
+                  <TableCell>
+                    {getStatusBadge(operationalData.temperature >= 15 && operationalData.temperature <= 30
+                      ? "Optimal"
+                      : (operationalData.temperature >= 10 && operationalData.temperature < 15) ||
+                        (operationalData.temperature > 30 && operationalData.temperature <= 35)
+                      ? "Acceptable"
+                      : "Suboptimal")}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Cost Analysis & Process Optimization */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <CircleDollarSign className="h-5 w-5 mr-2 text-blue-600" />
+              Cost Analysis
+            </CardTitle>
+            <CardDescription>
+              Operating cost breakdown
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <DonutChart 
+                data={costDistribution}
+                category="value"
+                index="name"
+                valueFormatter={(value) => `$${value.toLocaleString()}`}
+                className="h-64"
+              />
+            </div>
+            <div className="mt-4">
+              <Separator className="my-4" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Cost Summary</h3>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Daily Operating Cost:</span>
+                      <span className="font-medium">${operationalData.operatingCost}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Monthly Estimate:</span>
+                      <span className="font-medium">${(operationalData.operatingCost * 30).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Cost per m³:</span>
+                      <span className="font-medium">
+                        ${(operationalData.operatingCost / (dailyData.reduce((sum, day) => sum + day.flowRate, 0) / dailyData.length)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Cost Optimization</h3>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Current Usage:</span>
+                      <span className="font-medium">100%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Potential Savings:</span>
+                      <span className="font-medium text-emerald-600">12-18%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Optimized Cost:</span>
+                      <span className="font-medium text-emerald-600">
+                        ${Math.round(operationalData.operatingCost * 0.85)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <RefreshCw className="h-5 w-5 mr-2 text-blue-600" />
+              Process Optimization
+            </CardTitle>
+            <CardDescription>
+              Recommendations for process improvement
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium flex items-center">
+                    <Zap className="h-4 w-4 mr-2 text-blue-600" />
+                    Energy Optimization
+                  </h3>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">High Priority</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Implement dissolved oxygen control strategy with variable frequency drives on blowers to maintain DO at 2.0-2.5 mg/L.
+                </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Potential savings:</span>
+                  <span className="font-medium text-emerald-600">15-25% of aeration energy</span>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium flex items-center">
+                    <FlaskConical className="h-4 w-4 mr-2 text-emerald-600" />
+                    Chemical Optimization
+                  </h3>
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700">Medium Priority</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Implement flow-paced chemical dosing with feedback control based on effluent quality parameters.
+                </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Potential savings:</span>
+                  <span className="font-medium text-emerald-600">10-15% of chemical usage</span>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium flex items-center">
+                    <ArrowUpDown className="h-4 w-4 mr-2 text-amber-600" />
+                    Sludge Management
+                  </h3>
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700">Medium Priority</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Optimize sludge wasting rates to maintain SVI below 120 ml/g and MLSS concentration at 3,000-3,200 mg/L.
+                </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Expected benefits:</span>
+                  <span className="font-medium text-emerald-600">Improved settling, reduced biosolids</span>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2 text-red-600" />
+                    Performance Monitoring
+                  </h3>
+                  <Badge variant="outline" className="bg-red-50 text-red-700">Critical</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Implement continuous monitoring for key process parameters with automated alerts for deviations from optimal ranges.
+                </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Expected benefits:</span>
+                  <span className="font-medium text-emerald-600">Enhanced stability, reduced compliance risks</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
-export default OperationalAnalytics
