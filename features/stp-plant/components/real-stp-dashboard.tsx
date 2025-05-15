@@ -32,7 +32,18 @@ import {
   BarChart4,
   TreeDeciduous,
   Droplets,
-  ThermometerIcon
+  ThermometerIcon,
+  AlertTriangle,
+  ZapIcon,
+  ListFilter,
+  Download,
+  EyeIcon,
+  HeartPulse,
+  ClipboardCheck,
+  WrenchIcon,
+  ScrollText,
+  BrainCircuit,
+  ArrowRight
 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import WaterQualityCard from "./water-quality-card"
@@ -44,6 +55,8 @@ import { EnhancedDataTable } from "./enhanced-data-table"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import AnomalyAlert from "./anomaly-alert"
+import PredictiveCard from "./predictive-card"
 
 // Types for dashboard components
 interface KPICardProps {
@@ -51,7 +64,7 @@ interface KPICardProps {
   value: number
   unit: string
   change: number
-  icon: "flow" | "efficiency" | "utilization" | "quality" | "energy" | "chemical" | "biosolids" | "temperature"
+  icon: "flow" | "efficiency" | "utilization" | "quality" | "energy" | "chemical" | "biosolids" | "temperature" | "sludge" | "oxygen" | "pressure"
   colorClass?: string
 }
 
@@ -114,7 +127,13 @@ const generateOperationalData = (flowRate: number, efficiency: number) => {
     aerationRate: Number((75 + (capacityFactor * 25) - (efficiencyFactor * 10)).toFixed(1)),
     sludgeProcessed: Math.round(flowRate * 0.02),
     retentionTime: Number((12 + (efficiencyFactor * 8) - (capacityFactor * 4)).toFixed(1)),
-    temperature: Number((25 + (Math.random() * 3 - 1.5)).toFixed(1))
+    temperature: Number((25 + (Math.random() * 3 - 1.5)).toFixed(1)),
+    dissolvedOxygen: Number((3.5 + (efficiencyFactor * 2.5) - (capacityFactor * 1)).toFixed(1)),
+    sludgeReturnRate: Math.round(30 + (capacityFactor * 15)),
+    mlssConcentration: Math.round(2500 + (capacityFactor * 500) + (efficiencyFactor * 500)),
+    fmRatio: Number((0.15 + (capacityFactor * 0.15) - (efficiencyFactor * 0.1)).toFixed(2)),
+    svi: Math.round(120 + (capacityFactor * 30) - (efficiencyFactor * 20)),
+    pressure: Number((1.8 + (capacityFactor * 0.4)).toFixed(1))
   }
 }
 
@@ -183,6 +202,140 @@ const generateComplianceData = (waterQuality: any) => {
   ]
 }
 
+// Generate anomaly alerts based on operational data and compliance
+const generateAnomalyAlerts = (operationalData: any, complianceData: any) => {
+  const alerts = []
+  
+  // Check for non-compliant parameters
+  complianceData.forEach((item: any) => {
+    if (item.status === "violation") {
+      alerts.push({
+        title: `${item.parameter} Exceeds Limit`,
+        description: `${item.parameter} value (${item.value} ${item.unit}) exceeds regulatory limit of ${item.limit}`,
+        severity: "high",
+        timestamp: new Date().toISOString(),
+        status: "active"
+      })
+    }
+  })
+  
+  // Check for operational anomalies
+  if (operationalData.dissolvedOxygen < 2) {
+    alerts.push({
+      title: "Low Dissolved Oxygen",
+      description: `Dissolved oxygen level (${operationalData.dissolvedOxygen} mg/L) is below optimal range`,
+      severity: "medium",
+      timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+      status: "investigating"
+    })
+  }
+  
+  if (operationalData.mlssConcentration > 3500) {
+    alerts.push({
+      title: "High MLSS Concentration",
+      description: `MLSS concentration (${operationalData.mlssConcentration} mg/L) exceeds optimal range`,
+      severity: "medium",
+      timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+      status: "investigating"
+    })
+  }
+  
+  if (operationalData.energyConsumption > 3500) {
+    alerts.push({
+      title: "Energy Consumption Spike",
+      description: `Energy consumption (${operationalData.energyConsumption} kWh) is above expected range`,
+      severity: "low",
+      timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+      status: "resolved"
+    })
+  }
+  
+  return alerts
+}
+
+// Generate predictive analytics data
+const generatePredictiveData = (kpiData: any, operationalData: any) => {
+  return [
+    {
+      title: "Projected Efficiency",
+      current: kpiData.efficiency,
+      predicted: Math.min(100, kpiData.efficiency + 2.5),
+      unit: "%",
+      description: "Based on recent operational improvements",
+      trend: "up",
+      timeframe: "7 days"
+    },
+    {
+      title: "Energy Consumption",
+      current: operationalData.energyConsumption,
+      predicted: operationalData.energyConsumption * 0.95,
+      unit: "kWh",
+      description: "Forecasted based on planned optimization",
+      trend: "down",
+      timeframe: "30 days"
+    },
+    {
+      title: "Chemical Usage",
+      current: operationalData.chemicalUsage,
+      predicted: operationalData.chemicalUsage * 0.97,
+      unit: "kg",
+      description: "Projected after dosing adjustments",
+      trend: "down",
+      timeframe: "14 days"
+    },
+    {
+      title: "Equipment Maintenance",
+      current: 85,
+      predicted: 95,
+      unit: "%",
+      description: "Reliability after scheduled maintenance",
+      trend: "up",
+      timeframe: "60 days"
+    }
+  ]
+}
+
+// Generate maintenance schedule data
+const generateMaintenanceData = () => {
+  return [
+    {
+      equipment: "Aeration Blowers",
+      lastService: new Date(Date.now() - 45 * 86400000).toLocaleDateString(),
+      nextService: new Date(Date.now() + 45 * 86400000).toLocaleDateString(),
+      status: "Operational",
+      priority: "medium"
+    },
+    {
+      equipment: "Clarifier Drive",
+      lastService: new Date(Date.now() - 30 * 86400000).toLocaleDateString(),
+      nextService: new Date(Date.now() + 60 * 86400000).toLocaleDateString(),
+      status: "Operational",
+      priority: "low"
+    },
+    {
+      equipment: "Chemical Dosing Pumps",
+      lastService: new Date(Date.now() - 60 * 86400000).toLocaleDateString(),
+      nextService: new Date(Date.now() + 30 * 86400000).toLocaleDateString(),
+      status: "Needs Attention",
+      priority: "high"
+    },
+    {
+      equipment: "UV Disinfection System",
+      lastService: new Date(Date.now() - 90 * 86400000).toLocaleDateString(),
+      nextService: new Date(Date.now() + 10 * 86400000).toLocaleDateString(),
+      status: "Operational",
+      priority: "medium"
+    },
+    {
+      equipment: "Sludge Dewatering Unit",
+      lastService: new Date(Date.now() - 15 * 86400000).toLocaleDateString(),
+      nextService: new Date(Date.now() + 75 * 86400000).toLocaleDateString(),
+      status: "Operational",
+      priority: "low"
+    }
+  ]
+}
+
 export default function RealSTPDashboard() {
   const [selectedMonth, setSelectedMonth] = useState("2025-04")
   const [waterQualityParams, setWaterQualityParams] = useState({
@@ -204,9 +357,18 @@ export default function RealSTPDashboard() {
     aerationRate: 85,
     sludgeProcessed: 12,
     retentionTime: 14.5,
-    temperature: 25.8
+    temperature: 25.8,
+    dissolvedOxygen: 4.5,
+    sludgeReturnRate: 35,
+    mlssConcentration: 2800,
+    fmRatio: 0.18,
+    svi: 130,
+    pressure: 2.1
   })
   const [complianceData, setComplianceData] = useState<any[]>([])
+  const [anomalyAlerts, setAnomalyAlerts] = useState<any[]>([])
+  const [predictiveData, setPredictiveData] = useState<any[]>([])
+  const [maintenanceData, setMaintenanceData] = useState<any[]>([])
   
   const { 
     kpiData, 
@@ -229,10 +391,21 @@ export default function RealSTPDashboard() {
       const avgDailyFlow = kpiData.totalInflow / dailyData.length
 
       // Generate operational data
-      setOperationalData(generateOperationalData(avgDailyFlow, kpiData.efficiency))
+      const newOperationalData = generateOperationalData(avgDailyFlow, kpiData.efficiency)
+      setOperationalData(newOperationalData)
       
       // Generate compliance data
-      setComplianceData(generateComplianceData(newWaterQualityParams))
+      const newComplianceData = generateComplianceData(newWaterQualityParams)
+      setComplianceData(newComplianceData)
+      
+      // Generate anomaly alerts
+      setAnomalyAlerts(generateAnomalyAlerts(newOperationalData, newComplianceData))
+      
+      // Generate predictive analytics data
+      setPredictiveData(generatePredictiveData(kpiData, newOperationalData))
+      
+      // Generate maintenance schedule data
+      setMaintenanceData(generateMaintenanceData())
     }
   }, [kpiData.efficiency, kpiData.totalInflow, dailyData.length, isLoading])
 
@@ -292,6 +465,28 @@ export default function RealSTPDashboard() {
           </Select>
         </div>
       </div>
+
+      {/* Alerts Section */}
+      {anomalyAlerts.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4 flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+            System Alerts
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {anomalyAlerts.map((alert, index) => (
+              <AnomalyAlert 
+                key={index}
+                title={alert.title}
+                description={alert.description}
+                severity={alert.severity}
+                timestamp={alert.timestamp}
+                status={alert.status}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -374,6 +569,8 @@ export default function RealSTPDashboard() {
           <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="predictive">Predictive</TabsTrigger>
           <TabsTrigger value="raw">Raw Data</TabsTrigger>
         </TabsList>
 
@@ -488,1064 +685,176 @@ export default function RealSTPDashboard() {
           </Card>
         </TabsContent>
 
-        {/* Water Quality Tab */}
-        <TabsContent value="quality" className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Treatment Output Quality Parameters</CardTitle>
-                <CardDescription>TSE Water Quality - {getMonthName()}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Biochemical Oxygen Demand (BOD₅)</span>
-                          <span className="text-sm font-medium">{waterQualityParams.bodValue} mg/L</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.bodValue/40) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤20 mg/L</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Chemical Oxygen Demand (COD)</span>
-                          <span className="text-sm font-medium">{waterQualityParams.codValue} mg/L</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.codValue/200) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤100 mg/L</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Total Suspended Solids (TSS)</span>
-                          <span className="text-sm font-medium">{waterQualityParams.tssValue} mg/L</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.tssValue/60) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤30 mg/L</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">pH</span>
-                          <span className="text-sm font-medium">{waterQualityParams.phValue}</span>
-                        </div>
-                        <Progress 
-                          value={waterQualityParams.phValue < 7 ? 
-                            ((waterQualityParams.phValue - 4) / 3) * 100 : 
-                            (1 - ((waterQualityParams.phValue - 7) / 3)) * 100} 
-                          className="h-2" 
-                        />
-                        <span className="text-xs text-gray-500">Standard: 6.0-9.0</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Total Nitrogen (TN)</span>
-                          <span className="text-sm font-medium">{waterQualityParams.tnValue} mg/L</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.tnValue/30) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤15 mg/L</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Total Phosphorus (TP)</span>
-                          <span className="text-sm font-medium">{waterQualityParams.tpValue} mg/L</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.tpValue/4) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤2 mg/L</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Turbidity</span>
-                          <span className="text-sm font-medium">{waterQualityParams.turbidity} NTU</span>
-                        </div>
-                        <Progress value={(1 - waterQualityParams.turbidity/10) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≤5 NTU</span>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Dissolved Oxygen</span>
-                          <span className="text-sm font-medium">{waterQualityParams.dissolvedOxygen} mg/L</span>
-                        </div>
-                        <Progress value={(waterQualityParams.dissolvedOxygen/10) * 100} className="h-2" />
-                        <span className="text-xs text-gray-500">Standard: ≥4 mg/L</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Water Quality Standards Compliance</CardTitle>
-                <CardDescription>Regulatory Compliance Status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-medium mb-2">Overall Compliance Score</h3>
-                    <div className="flex items-center">
-                      <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700 mr-2">
-                        <div 
-                          className={`h-6 rounded-full ${
-                            calculateCompliancePercentage() > 90 ? "bg-emerald-500" : 
-                            calculateCompliancePercentage() > 70 ? "bg-amber-500" : "bg-red-500"
-                          }`}
-                          style={{ width: `${calculateCompliancePercentage()}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-lg font-bold">{calculateCompliancePercentage()}%</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Reuse Standards</h4>
-                      <p className={`text-xl font-bold ${calculateCompliancePercentage() > 80 ? "text-emerald-600" : "text-amber-600"}`}>
-                        {calculateCompliancePercentage() > 80 ? "Compliant" : "Conditional"}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {calculateCompliancePercentage() > 80 ? "Meets irrigation requirements" : "Some parameters need monitoring"}
-                      </p>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Regulatory Status</h4>
-                      <p className={`text-xl font-bold ${
-                        calculateCompliancePercentage() > 90 ? "text-emerald-600" : 
-                        calculateCompliancePercentage() > 70 ? "text-amber-600" : "text-red-600"
-                      }`}>
-                        {calculateCompliancePercentage() > 90 ? "Approved" : 
-                         calculateCompliancePercentage() > 70 ? "Conditional" : "Non-compliant"}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {calculateCompliancePercentage() > 90 ? "Meets all regulations" : 
-                         calculateCompliancePercentage() > 70 ? "Remediation plan required" : "Immediate action needed"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <h3 className="font-medium">Monitoring Parameters Status</h3>
-                  
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Parameter</TableHead>
-                          <TableHead>Value</TableHead>
-                          <TableHead>Limit</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {complianceData.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{item.parameter}</TableCell>
-                            <TableCell>{item.value} {item.unit}</TableCell>
-                            <TableCell>{item.limit}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                item.status === "compliant" ? "success" : 
-                                item.status === "warning" ? "warning" : "destructive"
-                              }>
-                                {item.status === "compliant" ? "Compliant" : 
-                                 item.status === "warning" ? "Warning" : "Violation"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Predictive Analytics Tab */}
+        <TabsContent value="predictive" className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {predictiveData.map((prediction, index) => (
+              <PredictiveCard
+                key={index}
+                title={prediction.title}
+                current={prediction.current}
+                predicted={prediction.predicted}
+                unit={prediction.unit}
+                description={prediction.description}
+                trend={prediction.trend}
+                timeframe={prediction.timeframe}
+              />
+            ))}
           </div>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Water Reuse Applications</CardTitle>
-              <CardDescription>TSE Water Reuse Potential Based on Quality</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Landscape Irrigation</h3>
-                  <div className="flex items-center mb-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      waterQualityParams.bodValue <= 20 && waterQualityParams.tssValue <= 30 ? 
-                      "bg-emerald-500" : "bg-amber-500"
-                    } mr-2`}></div>
-                    <span>{waterQualityParams.bodValue <= 20 && waterQualityParams.tssValue <= 30 ? "Suitable" : "Conditional"}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    TSE water is suitable for irrigating gardens, parks, and golf courses
-                  </p>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Industrial Uses</h3>
-                  <div className="flex items-center mb-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      waterQualityParams.bodValue <= 30 && waterQualityParams.tssValue <= 40 ? 
-                      "bg-emerald-500" : "bg-amber-500"
-                    } mr-2`}></div>
-                    <span>{waterQualityParams.bodValue <= 30 && waterQualityParams.tssValue <= 40 ? "Suitable" : "Conditional"}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Can be used for cooling systems and process water in industrial applications
-                  </p>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Groundwater Recharge</h3>
-                  <div className="flex items-center mb-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      waterQualityParams.bodValue <= 10 && waterQualityParams.fecalValue <= 200 ? 
-                      "bg-emerald-500" : "bg-amber-500"
-                    } mr-2`}></div>
-                    <span>{waterQualityParams.bodValue <= 10 && waterQualityParams.fecalValue <= 200 ? "Suitable" : "Conditional"}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {waterQualityParams.bodValue <= 10 && waterQualityParams.fecalValue <= 200 ? 
-                     "Meets requirements for groundwater recharge" : 
-                     "Additional treatment required for groundwater recharge"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Daily Analysis Tab */}
-        <TabsContent value="daily" className="space-y-8">
-          <DailyEfficiencyChart data={dailyData} />
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Daily Inflow</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <BarChart 
-                  data={dailyData.map((item: any) => ({
-                    name: `Day ${item.day}`,
-                    value: item.flowRate,
-                  }))}
-                  categories={["value"]}
-                  index="name"
-                  colors={["#3b82f6"]}
-                  valueFormatter={(value: number) => `${value} m³`}
-                  showLegend={false}
-                  yAxisWidth={60}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Operations Tab */}
-        <TabsContent value="operations" className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Operational Parameters</CardTitle>
-                <CardDescription>Key Process Parameters - {getMonthName()}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <GaugeIcon className="h-4 w-4 mr-1 text-blue-500" />
-                            Aeration Rate
-                          </span>
-                          <span className="text-sm font-medium">{operationalData.aerationRate} m³/hr</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-blue-500 rounded-full" 
-                            style={{ width: `${(operationalData.aerationRate / 100) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <BeakerIcon className="h-4 w-4 mr-1 text-purple-500" />
-                            Sludge Volume Index
-                          </span>
-                          <span className="text-sm font-medium">{Math.round(110 + Math.random() * 40)} mL/g</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-purple-500 rounded-full" 
-                            style={{ width: `${((110 + Math.random() * 40) / 200) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <DropletIcon className="h-4 w-4 mr-1 text-teal-500" />
-                            MLSS Concentration
-                          </span>
-                          <span className="text-sm font-medium">{Math.round(2500 + Math.random() * 1000)} mg/L</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-teal-500 rounded-full" 
-                            style={{ width: `${((2500 + Math.random() * 1000) / 4000) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <ThermometerIcon className="h-4 w-4 mr-1 text-red-500" />
-                            Process Temperature
-                          </span>
-                          <span className="text-sm font-medium">{operationalData.temperature} °C</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-red-500 rounded-full" 
-                            style={{ width: `${((operationalData.temperature - 20) / 15) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <DropletIcon className="h-4 w-4 mr-1 text-blue-500" />
-                            Hydraulic Retention Time
-                          </span>
-                          <span className="text-sm font-medium">{operationalData.retentionTime} hours</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-blue-500 rounded-full" 
-                            style={{ width: `${(operationalData.retentionTime / 20) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <ActivityIcon className="h-4 w-4 mr-1 text-green-500" />
-                            F/M Ratio
-                          </span>
-                          <span className="text-sm font-medium">{(0.1 + Math.random() * 0.2).toFixed(2)} kg BOD/kg MLSS</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-green-500 rounded-full" 
-                            style={{ width: `${((0.1 + Math.random() * 0.2) / 0.5) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <FlaskConical className="h-4 w-4 mr-1 text-amber-500" />
-                            Chemical Dosing Rate
-                          </span>
-                          <span className="text-sm font-medium">{Math.round(15 + Math.random() * 10)} mg/L</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-amber-500 rounded-full" 
-                            style={{ width: `${((15 + Math.random() * 10) / 30) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium flex items-center">
-                            <Droplets className="h-4 w-4 mr-1 text-cyan-500" />
-                            Sludge Age (SRT)
-                          </span>
-                          <span className="text-sm font-medium">{Math.round(8 + Math.random() * 7)} days</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-cyan-500 rounded-full" 
-                            style={{ width: `${((8 + Math.random() * 7) / 20) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Resource Consumption</CardTitle>
-                <CardDescription>Energy and Chemical Usage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">Energy Consumption</h3>
-                      <div className="text-2xl font-bold text-purple-600">{operationalData.energyConsumption} kWh</div>
-                      <div className="text-sm text-gray-500 flex items-center mt-1">
-                        <ArrowDown className="h-3 w-3 text-emerald-500 mr-1" />
-                        <span>2.4% from previous month</span>
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {(operationalData.energyConsumption / (kpiData.totalInflow / 30)).toFixed(1)} kWh/m³ treated
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">Chemical Usage</h3>
-                      <div className="text-2xl font-bold text-pink-600">{operationalData.chemicalUsage} kg</div>
-                      <div className="text-sm text-gray-500 flex items-center mt-1">
-                        <ArrowUp className="h-3 w-3 text-red-500 mr-1" />
-                        <span>1.5% from previous month</span>
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {((operationalData.chemicalUsage * 1000) / kpiData.totalInflow).toFixed(1)} g/m³ treated
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Energy Usage Breakdown</h3>
-                    <DonutChart 
-                      data={[
-                        { name: "Aeration", value: 45 },
-                        { name: "Pumping", value: 25 },
-                        { name: "Mixing", value: 15 },
-                        { name: "Sludge Treatment", value: 10 },
-                        { name: "Other", value: 5 }
-                      ]}
-                      category="value"
-                      index="name"
-                      colors={["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"]}
-                      valueFormatter={(value) => `${value}%`}
-                      className="h-60"
-                    />
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Chemical Usage Breakdown</h3>
-                    <DonutChart 
-                      data={[
-                        { name: "Coagulants", value: 35 },
-                        { name: "Polymers", value: 25 },
-                        { name: "Disinfectants", value: 20 },
-                        { name: "pH Adjustment", value: 15 },
-                        { name: "Other", value: 5 }
-                      ]}
-                      category="value"
-                      index="name"
-                      colors={["#ec4899", "#f472b6", "#f9a8d4", "#fbcfe8", "#fce7f3"]}
-                      valueFormatter={(value) => `${value}%`}
-                      className="h-60"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Process Efficiency</CardTitle>
-                <CardDescription>Treatment Stage Performance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Primary Treatment Efficiency</span>
-                        <span className="text-sm font-medium">{Math.round(35 + Math.random() * 10)}%</span>
-                      </div>
-                      <Progress value={35 + Math.random() * 10} className="h-2" />
-                      <span className="text-xs text-gray-500">BOD & TSS Removal</span>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Secondary Treatment Efficiency</span>
-                        <span className="text-sm font-medium">{Math.round(80 + Math.random() * 15)}%</span>
-                      </div>
-                      <Progress value={80 + Math.random() * 15} className="h-2" />
-                      <span className="text-xs text-gray-500">Biological Treatment</span>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Tertiary Treatment Efficiency</span>
-                        <span className="text-sm font-medium">{Math.round(70 + Math.random() * 20)}%</span>
-                      </div>
-                      <Progress value={70 + Math.random() * 20} className="h-2" />
-                      <span className="text-xs text-gray-500">Nutrient & Pathogen Removal</span>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Overall Process Efficiency</span>
-                        <span className="text-sm font-medium">{kpiData.efficiency}%</span>
-                      </div>
-                      <Progress value={kpiData.efficiency} className="h-2" />
-                      <span className="text-xs text-gray-500">Total Treatment Performance</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Performance by Contaminant Type</h3>
-                    <BarChart 
-                      data={[
-                        { parameter: "BOD", removal: 91 + Math.random() * 5 },
-                        { parameter: "COD", removal: 85 + Math.random() * 7 },
-                        { parameter: "TSS", removal: 94 + Math.random() * 3 },
-                        { parameter: "Nitrogen", removal: 75 + Math.random() * 10 },
-                        { parameter: "Phosphorus", removal: 80 + Math.random() * 8 },
-                        { parameter: "Pathogens", removal: 99 + Math.random() * 0.9 }
-                      ]}
-                      categories={["removal"]}
-                      index="parameter"
-                      colors={["#10b981"]}
-                      valueFormatter={(value) => `${value.toFixed(1)}%`}
-                      startAxisAtZero={true}
-                      className="h-60"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Biosolids Management</CardTitle>
-                <CardDescription>Sludge Processing and Disposal</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4">
-                      <h3 className="font-medium mb-2">Sludge Production</h3>
-                      <div className="text-2xl font-bold text-green-600">{operationalData.biosolidsProduction} tons</div>
-                      <div className="text-sm text-gray-500 flex items-center mt-1">
-                        <ArrowDown className="h-3 w-3 text-emerald-500 mr-1" />
-                        <span>0.8% from previous month</span>
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-lg p-4">
-                      <h3 className="font-medium mb-2">Sludge Processed</h3>
-                      <div className="text-2xl font-bold text-green-600">{operationalData.sludgeProcessed} m³</div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {(operationalData.sludgeProcessed / kpiData.totalInflow * 100).toFixed(1)}% of total inflow
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Biosolids Disposal Distribution</h3>
-                    <DonutChart 
-                      data={[
-                        { name: "Land Application", value: 55 },
-                        { name: "Composting", value: 25 },
-                        { name: "Landfill", value: 15 },
-                        { name: "Other", value: 5 }
-                      ]}
-                      category="value"
-                      index="name"
-                      colors={["#059669", "#34d399", "#6ee7b7", "#a7f3d0"]}
-                      valueFormatter={(value) => `${value}%`}
-                      className="h-60"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="flex justify-between items-center p-2 border rounded-md">
-                      <span className="flex items-center">
-                        <TreeDeciduous className="h-4 w-4 mr-2 text-green-500" />
-                        <span className="font-medium">Biosolids Quality</span>
-                      </span>
-                      <Badge variant="outline" className="bg-green-50">Class B</Badge>
-                    </div>
-                    
-                    <div className="flex justify-between items-center p-2 border rounded-md">
-                      <span className="flex items-center">
-                        <GaugeIcon className="h-4 w-4 mr-2 text-blue-500" />
-                        <span className="font-medium">Sludge Density</span>
-                      </span>
-                      <span>{(1.02 + Math.random() * 0.03).toFixed(2)} kg/L</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center p-2 border rounded-md">
-                      <span className="flex items-center">
-                        <DropletIcon className="h-4 w-4 mr-2 text-cyan-500" />
-                        <span className="font-medium">Moisture Content</span>
-                      </span>
-                      <span>{Math.round(75 + Math.random() * 10)}%</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Compliance Tab */}
-        <TabsContent value="compliance" className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Compliance Dashboard</CardTitle>
-                <CardDescription>Regulatory Requirements Status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <div className="mb-4 text-center">
-                      <div className="inline-flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
-                        {calculateCompliancePercentage() > 90 ? (
-                          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                        ) : calculateCompliancePercentage() > 70 ? (
-                          <AlertCircle className="h-12 w-12 text-amber-500" />
-                        ) : (
-                          <AlertCircle className="h-12 w-12 text-red-500" />
-                        )}
-                      </div>
-                      <h3 className="text-2xl font-bold mt-2">
-                        {calculateCompliancePercentage()}% Compliant
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {getMonthName()} Compliance Rate
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Regulatory Compliance</span>
-                        <Badge variant={calculateCompliancePercentage() > 90 ? "success" : "warning"}>
-                          {calculateCompliancePercentage() > 90 ? "Compliant" : "Action Required"}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Permit Status</span>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                          Active
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Last Inspection</span>
-                        <span className="text-sm">{new Date().toLocaleDateString()}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Next Report Due</span>
-                        <span className="text-sm">{new Date(new Date().setDate(new Date().getDate() + 30)).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Parameter Compliance</h3>
-                    <div className="space-y-3">
-                      {complianceData.map((item, index) => (
-                        <div key={index} className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full ${
-                            item.status === "compliant" ? "bg-emerald-500" : 
-                            item.status === "warning" ? "bg-amber-500" : "bg-red-500"
-                          } mr-2`}></div>
-                          <span className="text-sm flex-1">{item.parameter}</span>
-                          <span className="text-sm font-medium">{item.value} {item.unit}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Compliance Trend Analysis</CardTitle>
-                <CardDescription>6-Month Historical Compliance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Overall Compliance Trend</h3>
-                    <LineChart 
-                      data={[
-                        { month: "Nov", compliance: 88 + Math.random() * 5 },
-                        { month: "Dec", compliance: 91 + Math.random() * 5 },
-                        { month: "Jan", compliance: 89 + Math.random() * 6 },
-                        { month: "Feb", compliance: 93 + Math.random() * 4 },
-                        { month: "Mar", compliance: 92 + Math.random() * 5 },
-                        { month: "Apr", compliance: calculateCompliancePercentage() }
-                      ]}
-                      categories={["compliance"]}
-                      index="month"
-                      colors={["#10b981"]}
-                      valueFormatter={(value) => `${value.toFixed(1)}%`}
-                      startAxisAtZero={false}
-                      className="h-60"
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Water Quality Violations</h3>
-                    <BarChart 
-                      data={[
-                        { month: "Nov", violations: Math.round(Math.random() * 2) },
-                        { month: "Dec", violations: Math.round(Math.random() * 1) },
-                        { month: "Jan", violations: Math.round(Math.random() * 2) },
-                        { month: "Feb", violations: Math.round(Math.random() * 1) },
-                        { month: "Mar", violations: Math.round(Math.random() * 1) },
-                        { month: "Apr", violations: complianceData.filter(item => item.status === "violation").length }
-                      ]}
-                      categories={["violations"]}
-                      index="month"
-                      colors={["#ef4444"]}
-                      valueFormatter={(value) => `${value}`}
-                      startAxisAtZero={true}
-                      className="h-60"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Detailed Compliance Records</CardTitle>
-                <CardDescription>Parameter-by-Parameter Analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Parameter</TableHead>
-                        <TableHead>Current Value</TableHead>
-                        <TableHead>Regulatory Limit</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Action Required</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {complianceData.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{item.parameter}</TableCell>
-                          <TableCell>{item.value} {item.unit}</TableCell>
-                          <TableCell>{item.limit}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              item.status === "compliant" ? "success" : 
-                              item.status === "warning" ? "warning" : "destructive"
-                            }>
-                              {item.status === "compliant" ? "Compliant" : 
-                              item.status === "warning" ? "Warning" : "Violation"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {item.status === "compliant" ? 
-                              "No action needed" : 
-                              item.status === "warning" ? 
-                              "Monitor closely" : 
-                              "Implement remediation plan"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Reporting Status</CardTitle>
-                <CardDescription>Regulatory Documentation</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                    <div className="flex items-center">
-                      <FileText className="h-5 w-5 text-blue-500 mr-2" />
-                      <span>Monthly Operations Report</span>
-                    </div>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700">Submitted</Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                    <div className="flex items-center">
-                      <FileBarChart className="h-5 w-5 text-blue-500 mr-2" />
-                      <span>Quarterly Compliance Report</span>
-                    </div>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700">In Progress</Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                    <div className="flex items-center">
-                      <Microscope className="h-5 w-5 text-blue-500 mr-2" />
-                      <span>Laboratory Analysis Results</span>
-                    </div>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700">Submitted</Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                    <div className="flex items-center">
-                      <BarChart4 className="h-5 w-5 text-blue-500 mr-2" />
-                      <span>Annual Performance Report</span>
-                    </div>
-                    <Badge variant="outline" className="bg-gray-50 text-gray-700">Due in 3 months</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Compliance Recommendations</CardTitle>
-                <CardDescription>Action Items to Improve Compliance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {complianceData.filter(item => item.status !== "compliant").length > 0 ? (
-                    complianceData.filter(item => item.status !== "compliant").map((item, index) => (
-                      <div key={index} className="border rounded-md p-4">
-                        <div className="flex items-center mb-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            item.status === "warning" ? "bg-amber-500" : "bg-red-500"
-                          } mr-2`}></div>
-                          <h3 className="font-medium">{item.parameter} {item.status === "warning" ? "Warning" : "Violation"}</h3>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-2">
-                          Current value: <span className="font-medium">{item.value} {item.unit}</span> | 
-                          Limit: <span className="font-medium">{item.limit}</span>
-                        </p>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                          <h4 className="text-sm font-medium mb-1">Recommended Actions:</h4>
-                          <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-                            {item.parameter === "BOD5" && (
-                              <>
-                                <li>Increase aeration in biological treatment process</li>
-                                <li>Check for organic overloading in influent</li>
-                                <li>Optimize sludge return rate from secondary clarifiers</li>
-                              </>
-                            )}
-                            {item.parameter === "COD" && (
-                              <>
-                                <li>Increase hydraulic retention time in aeration tanks</li>
-                                <li>Check for industrial discharges in influent</li>
-                                <li>Consider adding chemical coagulants to enhance removal</li>
-                              </>
-                            )}
-                            {item.parameter === "TSS" && (
-                              <>
-                                <li>Check clarifier operation and sludge blanket depth</li>
-                                <li>Optimize polymer dosing in tertiary treatment</li>
-                                <li>Inspect filters for potential breakthrough</li>
-                              </>
-                            )}
-                            {item.parameter === "Total Nitrogen" && (
-                              <>
-                                <li>Verify anoxic zone functioning properly</li>
-                                <li>Increase internal recycle rates</li>
-                                <li>Check dissolved oxygen levels in biological systems</li>
-                              </>
-                            )}
-                            {item.parameter === "Total Phosphorus" && (
-                              <>
-                                <li>Increase chemical dosing for phosphorus precipitation</li>
-                                <li>Check mixing in chemical addition points</li>
-                                <li>Optimize biological phosphorus removal process</li>
-                              </>
-                            )}
-                            {item.parameter === "Fecal Coliform" && (
-                              <>
-                                <li>Check disinfection system operation</li>
-                                <li>Increase chlorine dosage or UV intensity</li>
-                                <li>Ensure adequate contact time in disinfection tank</li>
-                              </>
-                            )}
-                            {item.parameter === "pH" && (
-                              <>
-                                <li>Adjust chemical dosing for pH neutralization</li>
-                                <li>Check alkalinity of incoming wastewater</li>
-                                <li>Monitor biological processes for acid production</li>
-                              </>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="border rounded-md p-4 text-center">
-                      <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-2" />
-                      <h3 className="font-medium mb-1">All Parameters Compliant</h3>
-                      <p className="text-sm text-gray-500">
-                        All monitored parameters are currently within regulatory limits. Continue with current operations.
-                      </p>
-                    </div>
-                  )}
-
-                  {complianceData.filter(item => item.status !== "compliant").length > 0 && (
-                    <div className="mt-4 flex justify-end">
-                      <Button variant="outline" className="mr-2">
-                        Generate Report
-                      </Button>
-                      <Button>
-                        Implement Action Plan
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Trends Tab */}
-        <TabsContent value="trends" className="space-y-8">
-          <MonthlyEfficiencyChart data={monthlyData} />
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Energy Consumption Trend</CardTitle>
+                <CardTitle className="text-lg font-medium">Predictive Maintenance Recommendations</CardTitle>
+                <CardDescription>AI-Driven Equipment Health Insights</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <LineChart 
-                    data={monthlyData.map((item: any, index: number) => ({
-                      month: item.month,
-                      "Energy Usage": 2800 + Math.random() * 700 + (index * 50),
-                      "Target": 3000,
-                    }))}
-                    categories={["Energy Usage", "Target"]}
-                    index="month"
-                    colors={["#8b5cf6", "#94a3b8"]}
-                    valueFormatter={(value: number) => `${Math.round(value)} kWh`}
-                    showLegend={true}
-                    yAxisWidth={60}
-                  />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <BrainCircuit className="h-10 w-10 text-blue-600 mr-3" />
+                      <div>
+                        <h3 className="font-medium">AI-Powered Prediction Model</h3>
+                        <p className="text-sm text-gray-500">Using machine learning to predict equipment failures and optimize maintenance</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800">Active</Badge>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium flex items-center">
+                          <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                          Aeration Blower #2 
+                        </h3>
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700">Attention Needed</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">Vibration analysis indicates potential bearing wear. Recommended maintenance within 15 days to prevent unexpected failure.</p>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Failure probability:</span>
+                        <span className="font-medium text-amber-600">32% within 30 days</span>
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                          UV Disinfection System
+                        </h3>
+                        <Badge variant="outline" className="bg-red-50 text-red-700">Urgent</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">UV intensity trending downward. Lamp replacement required within 7 days to maintain disinfection efficacy.</p>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Failure probability:</span>
+                        <span className="font-medium text-red-600">68% within 14 days</span>
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium flex items-center">
+                          <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                          Clarifier Drive Motors
+                        </h3>
+                        <Badge variant="outline" className="bg-green-50 text-green-700">Healthy</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">All parameters within normal operating ranges. No maintenance required at this time.</p>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Failure probability:</span>
+                        <span className="font-medium text-green-600">&lt;5% within 90 days</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-
+            
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Water Quality Trends</CardTitle>
+                <CardTitle className="text-lg font-medium">Efficiency Optimization Forecast</CardTitle>
+                <CardDescription>Projected Performance Improvements</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <LineChart 
-                    data={monthlyData.map((item: any, index: number) => ({
-                      month: item.month,
-                      "BOD": Math.max(5, 20 - (item.efficiency * 0.15)),
-                      "TSS": Math.max(7, 25 - (item.efficiency * 0.2)),
-                      "Nitrogen": Math.max(3, 15 - (item.efficiency * 0.1)),
-                    }))}
-                    categories={["BOD", "TSS", "Nitrogen"]}
-                    index="month"
-                    colors={["#10b981", "#0ea5e9", "#8b5cf6"]}
-                    valueFormatter={(value: number) => `${value.toFixed(1)} mg/L`}
-                    showLegend={true}
-                    yAxisWidth={60}
-                  />
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Treatment Efficiency Projection</h3>
+                    <LineChart 
+                      data={[
+                        { month: "Current", efficiency: kpiData.efficiency },
+                        { month: "+1 Month", efficiency: Math.min(98, kpiData.efficiency + 1.5) },
+                        { month: "+2 Months", efficiency: Math.min(98, kpiData.efficiency + 2.5) },
+                        { month: "+3 Months", efficiency: Math.min(98, kpiData.efficiency + 3) },
+                      ]}
+                      categories={["efficiency"]}
+                      index="month"
+                      colors={["#10b981"]}
+                      valueFormatter={(value) => `${value.toFixed(1)}%`}
+                      className="h-60"
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-medium mb-2">Resource Optimization Potential</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Energy Savings</span>
+                            <span className="font-medium">7-10%</span>
+                          </div>
+                          <Progress value={8.5} className="h-1.5" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Chemical Reduction</span>
+                            <span className="font-medium">5-8%</span>
+                          </div>
+                          <Progress value={6.5} className="h-1.5" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Maintenance Cost Savings</span>
+                            <span className="font-medium">10-15%</span>
+                          </div>
+                          <Progress value={12.5} className="h-1.5" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-medium mb-2">Recommended Process Adjustments</h3>
+                      <ul className="text-sm space-y-2">
+                        <li className="flex items-start">
+                          <div className="mt-0.5 mr-2 h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-xs text-blue-700">1</span>
+                          </div>
+                          <span>Optimize MLSS concentration in aeration basins to 3,200 mg/L</span>
+                        </li>
+                        <li className="flex items-start">
+                          <div className="mt-0.5 mr-2 h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-xs text-blue-700">2</span>
+                          </div>
+                          <span>Adjust RAS rate to 40% of influent flow during peak periods</span>
+                        </li>
+                        <li className="flex items-start">
+                          <div className="mt-0.5 mr-2 h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-xs text-blue-700">3</span>
+                          </div>
+                          <span>Implement time-based chemical dosing strategy based on influent patterns</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Operational Performance Indicators</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <BarChart 
-                  data={[
-                    { 
-                      indicator: "Treatment Efficiency",
-                      "Current Month": kpiData.efficiency,
-                      "Previous Month": kpiData.efficiency - kpiData.efficiencyChange,
-                      "Target": 90,
-                    },
-                    { 
-                      indicator: "Energy Efficiency",
-                      "Current Month": 85 + Math.random() * 5,
-                      "Previous Month": 82 + Math.random() * 5,
-                      "Target": 90,
-                    },
-                    { 
-                      indicator: "Chemical Efficiency",
-                      "Current Month": 78 + Math.random() * 10,
-                      "Previous Month": 75 + Math.random() * 10,
-                      "Target": 85,
-                    },
-                    { 
-                      indicator: "Labor Efficiency",
-                      "Current Month": 88 + Math.random() * 7,
-                      "Previous Month": 85 + Math.random() * 7,
-                      "Target": 90,
-                    },
-                    { 
-                      indicator: "Overall Cost Efficiency",
-                      "Current Month": 82 + Math.random() * 8,
-                      "Previous Month": 80 + Math.random() * 8,
-                      "Target": 85,
-                    },
-                  ]}
-                  categories={["Current Month", "Previous Month", "Target"]}
-                  index="indicator"
-                  colors={["#10b981", "#94a3b8", "#f97316"]}
-                  valueFormatter={(value: number) => `${value.toFixed(1)}%`}
-                  yAxisWidth={60}
-                />
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
-
+        
         {/* Raw Data Tab */}
         <TabsContent value="raw" className="space-y-8">
           <EnhancedDataTable data={rawData} previousData={previousMonthRawData} />
@@ -1584,6 +893,12 @@ function KPICard({ title, value, unit, change, icon, colorClass = "bg-gray-50 te
         return <TreeDeciduous className="h-5 w-5" />;
       case "temperature":
         return <ThermometerIcon className="h-5 w-5" />;
+      case "sludge":
+        return <Droplets className="h-5 w-5" />;
+      case "oxygen":
+        return <DropletIcon className="h-5 w-5" />;
+      case "pressure":
+        return <GaugeIcon className="h-5 w-5" />;
       default:
         return <BarChart3Icon className="h-5 w-5" />;
     }
