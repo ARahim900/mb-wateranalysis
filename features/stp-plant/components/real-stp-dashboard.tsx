@@ -57,6 +57,9 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import AnomalyAlert from "./anomaly-alert"
 import PredictiveCard from "./predictive-card"
+import TreatmentQualityMetrics from "./treatment-quality-metrics"
+import OperationalAnalytics from "./operational-analytics"
+import MaintenanceSchedule from "./maintenance-schedule"
 
 // Types for dashboard components
 interface KPICardProps {
@@ -565,11 +568,11 @@ export default function RealSTPDashboard() {
         <TabsList className="mb-8 w-full justify-start overflow-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="quality">Water Quality</TabsTrigger>
-          <TabsTrigger value="daily">Daily Analysis</TabsTrigger>
           <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="daily">Daily Analysis</TabsTrigger>
+          <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="predictive">Predictive</TabsTrigger>
           <TabsTrigger value="raw">Raw Data</TabsTrigger>
         </TabsList>
@@ -683,6 +686,89 @@ export default function RealSTPDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Water Quality Tab */}
+        <TabsContent value="quality">
+          <TreatmentQualityMetrics 
+            waterQualityParams={waterQualityParams}
+            dailyData={dailyData}
+            monthlyData={monthlyData}
+          />
+        </TabsContent>
+
+        {/* Operations Tab */}
+        <TabsContent value="operations">
+          <OperationalAnalytics 
+            operationalData={operationalData}
+            dailyData={dailyData}
+            monthlyData={monthlyData}
+          />
+        </TabsContent>
+
+        {/* Maintenance Tab */}
+        <TabsContent value="maintenance">
+          <MaintenanceSchedule maintenanceData={maintenanceData} />
+        </TabsContent>
+
+        {/* Daily Analysis Tab */}
+        <TabsContent value="daily" className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Daily Inflow & Outflow</CardTitle>
+                <CardDescription>
+                  Daily STP flows for {getMonthName()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <LineChart
+                    data={dailyData.map(day => ({
+                      day: day.day,
+                      inflow: day.flowRate,
+                      outflow: day.flowRate * (day.efficiency / 100),
+                    }))}
+                    index="day"
+                    categories={["inflow", "outflow"]}
+                    colors={["blue", "green"]}
+                    valueFormatter={(value) => `${Math.round(value)} m³`}
+                    showLegend={true}
+                    yAxisWidth={60}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <DailyEfficiencyChart data={dailyData} />
+          </div>
+        </TabsContent>
+
+        {/* Trends Tab */}
+        <TabsContent value="trends" className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Monthly Flow Trend</CardTitle>
+                <CardDescription>Average daily flow by month</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <BarChart
+                    data={monthlyData}
+                    index="month"
+                    categories={["flowRate"]}
+                    colors={["blue"]}
+                    valueFormatter={(value) => `${Math.round(value)} m³`}
+                    showLegend={false}
+                    yAxisWidth={60}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <MonthlyEfficiencyChart data={monthlyData} />
+          </div>
         </TabsContent>
 
         {/* Predictive Analytics Tab */}
@@ -853,6 +939,136 @@ export default function RealSTPDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        
+        {/* Compliance Tab */}
+        <TabsContent value="compliance" className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Overall Compliance</CardTitle>
+                <CardDescription>Regulatory standards adherence</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center">
+                  <div className="relative w-36 h-36 mb-3">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke="#f3f4f6"
+                        strokeWidth="10"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke={calculateCompliancePercentage() >= 90 ? "#10b981" : calculateCompliancePercentage() >= 75 ? "#f59e0b" : "#ef4444"}
+                        strokeWidth="10"
+                        strokeDasharray={`${(calculateCompliancePercentage() / 100) * 283} 283`}
+                        strokeDashoffset="0"
+                        transform="rotate(-90 50 50)"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center flex-col">
+                      <span className="text-3xl font-bold">{calculateCompliancePercentage()}%</span>
+                      <span className="text-xs text-gray-500">Compliant</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-500">
+                      Based on Oman Standard 115/2001 for treated wastewater
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Compliance Distribution</CardTitle>
+                <CardDescription>Parameter status breakdown</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-44">
+                  <BarChart
+                    data={[
+                      { 
+                        status: "Compliant", 
+                        count: complianceData.filter(item => item.status === "compliant").length,
+                        color: "#10b981"
+                      },
+                      { 
+                        status: "Warning", 
+                        count: complianceData.filter(item => item.status === "warning").length,
+                        color: "#f59e0b"
+                      },
+                      { 
+                        status: "Violation", 
+                        count: complianceData.filter(item => item.status === "violation").length,
+                        color: "#ef4444"
+                      }
+                    ]}
+                    index="status"
+                    categories={["count"]}
+                    colors={["emerald", "amber", "red"]}
+                    valueFormatter={(value) => `${value} parameter${value !== 1 ? 's' : ''}`}
+                    layout="vertical"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium">Parameter Compliance Status</CardTitle>
+              <CardDescription>Detailed regulatory compliance metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parameter</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Regulatory Limit</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Regulation</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {complianceData.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.parameter}</TableCell>
+                        <TableCell>{item.value} {item.unit}</TableCell>
+                        <TableCell>{item.limit}</TableCell>
+                        <TableCell>
+                          {item.status === "compliant" ? (
+                            <Badge className="bg-emerald-50 text-emerald-700">
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Compliant
+                            </Badge>
+                          ) : item.status === "warning" ? (
+                            <Badge className="bg-amber-50 text-amber-700">
+                              <AlertTriangle className="h-3 w-3 mr-1" /> Warning
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-50 text-red-700">
+                              <AlertCircle className="h-3 w-3 mr-1" /> Violation
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{item.regulation}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* Raw Data Tab */}
