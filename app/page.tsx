@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import LandingPage from "@/components/landing-page"
 import { AnimatePresence, motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import LandingPage from "@/components/landing-page"
 
 // Dynamically import section components
 const WaterDashboard = dynamic(() => import("@/components/water-dashboard"), {
@@ -34,10 +34,10 @@ export default function Home() {
       case "electricityAnalysis":
         return (
           <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="min-h-screen"
           >
             <ElectricityDashboard />
@@ -46,10 +46,10 @@ export default function Home() {
       case "stpPlant":
         return (
           <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="min-h-screen"
           >
             <StpPlantDashboard />
@@ -58,10 +58,10 @@ export default function Home() {
       case "contractorTracker":
         return (
           <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="min-h-screen"
           >
             <ContractorDashboard />

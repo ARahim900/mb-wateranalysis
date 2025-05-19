@@ -3,19 +3,17 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 3000
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  type: "default" | "success" | "error"
 }
 
 const actionTypes = {
@@ -85,9 +83,7 @@ export const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
+        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
       }
 
     case "DISMISS_TOAST": {
@@ -111,7 +107,7 @@ export const reducer = (state: State, action: Action): State => {
                 ...t,
                 open: false,
               }
-            : t
+            : t,
         ),
       }
     }
@@ -142,7 +138,7 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+function toast({ title, description, type = "default", ...props }: Toast) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -158,6 +154,9 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
+      type,
+      title,
+      description,
       onOpenChange: (open) => {
         if (!open) dismiss()
       },
@@ -171,24 +170,36 @@ function toast({ ...props }: Toast) {
   }
 }
 
-function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
+export function useToast() {
+  const [toasts, setToasts] = React.useState<ToasterToast[]>(memoryState.toasts)
 
   React.useEffect(() => {
-    listeners.push(setState)
+    listeners.push(setToasts)
     return () => {
-      const index = listeners.indexOf(setState)
+      const index = listeners.indexOf(setToasts)
       if (index > -1) {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [toasts])
+
+  const addToast = (title: string, description?: string, type: "default" | "success" | "error" = "default") => {
+    const id = genId()
+    setToasts((prev) => [...prev, { id, title, description, type, open: true }])
+
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+      dismissToast(id)
+    }, TOAST_REMOVE_DELAY)
+  }
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
 
   return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    toasts,
+    addToast,
+    dismissToast,
   }
 }
-
-export { useToast, toast }

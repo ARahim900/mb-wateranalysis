@@ -1,5 +1,9 @@
-import type React from "react"
-import { Sankey, Tooltip, ResponsiveContainer, Rectangle } from "recharts"
+"use client"
+
+import { useEffect, useState } from "react"
+import { Sankey, Tooltip, ResponsiveContainer, Rectangle, Layer } from "recharts"
+import type { STPData } from "../hooks/use-stp-data"
+import { ensureNumber } from "../hooks/use-stp-data"
 
 interface SankeyNode {
   name: string
@@ -11,163 +15,147 @@ interface SankeyLink {
   value: number
 }
 
+interface SankeyData {
+  nodes: SankeyNode[]
+  links: SankeyLink[]
+}
+
 interface EnhancedFlowSankeyProps {
-  data: {
-    nodes: SankeyNode[]
-    links: SankeyLink[]
-  }
-  title?: string
+  data: STPData[]
 }
 
-// Helper function to ensure a value is a valid number
-const ensureNumber = (value: any, defaultValue = 0): number => {
-  const num = Number(value)
-  return isNaN(num) ? defaultValue : num
+// Helper function to ensure a value is a number
+function ensureValidNumber(value: any): number {
+  const num = ensureNumber(value)
+  return isNaN(num) ? 0 : num
 }
 
-export const EnhancedFlowSankey: React.FC<EnhancedFlowSankeyProps> = ({
-  data,
-  title = "Water Flow Sankey Diagram",
-}) => {
-  // Ensure data has valid nodes and links
-  const safeData = {
-    nodes: Array.isArray(data?.nodes) ? data.nodes : [{ name: "No Data" }],
-    links: Array.isArray(data?.links) ? data.links : [],
+// Custom Node component with safety checks
+const CustomNode = (props: any) => {
+  // Safety check for props
+  if (!props || !props.payload) {
+    return null
   }
 
-  // Custom colors for the nodes
-  const nodeColors = [
-    "#3b82f6", // blue-500
-    "#10b981", // emerald-500
-    "#f59e0b", // amber-500
-    "#ef4444", // red-500
-    "#8b5cf6", // violet-500
-    "#ec4899", // pink-500
-    "#06b6d4", // cyan-500
-  ]
+  // Ensure x, y, width, height are valid numbers
+  const x = ensureValidNumber(props.x)
+  const y = ensureValidNumber(props.y)
+  const width = ensureValidNumber(props.width)
+  const height = ensureValidNumber(props.height)
 
-  // Custom colors for the links
-  const getLinkColor = (sourceIndex: number, targetIndex: number) => {
-    const sourceColor = nodeColors[sourceIndex % nodeColors.length]
-    const targetColor = nodeColors[targetIndex % nodeColors.length]
-
-    return {
-      source: sourceColor,
-      target: targetColor,
-    }
-  }
-
-  const CustomLink = (props: any) => {
-    // Ensure all position values are valid numbers
-    const sourceX = ensureNumber(props.sourceX)
-    const targetX = ensureNumber(props.targetX)
-    const sourceY = ensureNumber(props.sourceY)
-    const targetY = ensureNumber(props.targetY)
-    const sourceControlX = ensureNumber(props.sourceControlX)
-    const targetControlX = ensureNumber(props.targetControlX)
-    const linkWidth = ensureNumber(props.linkWidth, 1)
-
-    // Safely access source and target from payload
-    const payload = props.payload || {}
-    const sourceIndex = ensureNumber(payload.source, 0)
-    const targetIndex = ensureNumber(payload.target, 0)
-
-    const { source: sourceColor, target: targetColor } = getLinkColor(sourceIndex, targetIndex)
-
-    // If any of the position values are still NaN, don't render the link
-    if ([sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX].some(isNaN)) {
-      return null
-    }
-
-    return (
-      <g>
-        <defs>
-          <linearGradient id={`linkGradient${sourceIndex}-${targetIndex}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={sourceColor} stopOpacity={0.6} />
-            <stop offset="100%" stopColor={targetColor} stopOpacity={0.6} />
-          </linearGradient>
-        </defs>
-        <path
-          d={`
-            M${sourceX},${sourceY}
-            C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}
-          `}
-          fill="none"
-          stroke={`url(#linkGradient${sourceIndex}-${targetIndex})`}
-          strokeWidth={linkWidth}
-          strokeOpacity="0.8"
-        />
-      </g>
-    )
-  }
-
-  const CustomNode = (props: any) => {
-    // Ensure all position and dimension values are valid numbers
-    const x = ensureNumber(props.x)
-    const y = ensureNumber(props.y)
-    const width = ensureNumber(props.width, 10)
-    const height = ensureNumber(props.height, 10)
-    const index = ensureNumber(props.index, 0)
-
-    // Safely access payload and name
-    const payload = props.payload || {}
-    const nodeName = payload.name || `Node ${index}`
-    const color = nodeColors[index % nodeColors.length]
-
-    // If any of the position or dimension values are still NaN, don't render the node
-    if ([x, y, width, height].some(isNaN)) {
-      return null
-    }
-
-    return (
-      <g>
-        <Rectangle x={x} y={y} width={width} height={height} fill={color} fillOpacity="0.8" />
-        <text
-          x={x + width / 2}
-          y={y + height / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#fff"
-          fontSize={12}
-          fontWeight="bold"
-        >
-          {nodeName}
-        </text>
-      </g>
-    )
-  }
-
-  // If there are no valid links, show a placeholder message
-  if (safeData.links.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 h-full">
-        <h3 className="text-lg font-medium text-gray-800 mb-4">{title}</h3>
-        <div className="w-full h-[400px] flex items-center justify-center">
-          <p className="text-gray-500">No flow data available for the selected period.</p>
-        </div>
-      </div>
-    )
-  }
+  // Get node name with fallback
+  const name = props.payload.name || "Unknown"
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 h-full">
-      <h3 className="text-lg font-medium text-gray-800 mb-4">{title}</h3>
-      <div className="w-full h-[400px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <Sankey
-            data={safeData}
-            node={<CustomNode />}
-            link={<CustomLink />}
-            nodePadding={50}
-            margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          >
-            <Tooltip formatter={(value) => `${value} m³`} labelFormatter={(name) => `Node: ${name}`} />
-          </Sankey>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-4 text-sm text-gray-500">
-        <p>This diagram shows the flow of water through different stages of the STP plant.</p>
-      </div>
+    <Rectangle x={x} y={y} width={width} height={height} fill="#8ACCD5" fillOpacity={0.9}>
+      <text
+        x={x + width / 2}
+        y={y + height / 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#fff"
+        fontSize={12}
+      >
+        {name}
+      </text>
+    </Rectangle>
+  )
+}
+
+// Custom Link component with safety checks
+const CustomLink = (props: any) => {
+  // Safety check for props
+  if (!props || !props.sourceX === undefined || !props.targetX === undefined) {
+    return null
+  }
+
+  // Ensure all coordinates are valid numbers
+  const sourceX = ensureValidNumber(props.sourceX)
+  const sourceY = ensureValidNumber(props.sourceY)
+  const sourceControlX = ensureValidNumber(props.sourceControlX)
+  const targetX = ensureValidNumber(props.targetX)
+  const targetY = ensureValidNumber(props.targetY)
+  const targetControlX = ensureValidNumber(props.targetControlX)
+  const linkWidth = ensureValidNumber(props.linkWidth)
+
+  return (
+    <path
+      d={`
+        M${sourceX},${sourceY}
+        C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}
+      `}
+      fill="none"
+      stroke="#4E4456"
+      strokeWidth={linkWidth}
+      strokeOpacity={0.2}
+    />
+  )
+}
+
+export function EnhancedFlowSankey({ data }: EnhancedFlowSankeyProps) {
+  const [sankeyData, setSankeyData] = useState<SankeyData>({
+    nodes: [
+      { name: "Tanker" },
+      { name: "Direct Sewage" },
+      { name: "Inlet" },
+      { name: "Treatment" },
+      { name: "Treated Water" },
+      { name: "TSE Water" },
+    ],
+    links: [
+      { source: 0, target: 2, value: 100 },
+      { source: 1, target: 2, value: 200 },
+      { source: 2, target: 3, value: 300 },
+      { source: 3, target: 4, value: 250 },
+      { source: 4, target: 5, value: 200 },
+    ],
+  })
+
+  useEffect(() => {
+    if (data && data.length > 0) {
+      // Calculate totals
+      const tankerVolume = data.reduce((sum, item) => sum + ensureValidNumber(item.expectedTankerVolume), 0)
+      const directSewage = data.reduce((sum, item) => sum + ensureValidNumber(item.directInlineSewage), 0)
+      const totalInlet = data.reduce((sum, item) => sum + ensureValidNumber(item.totalInletSewage), 0)
+      const totalTreated = data.reduce((sum, item) => sum + ensureValidNumber(item.totalTreatedWater), 0)
+      const totalTSE = data.reduce((sum, item) => sum + ensureValidNumber(item.totalTSEWater), 0)
+
+      // Create Sankey data
+      const newSankeyData: SankeyData = {
+        nodes: [
+          { name: "Tanker" },
+          { name: "Direct Sewage" },
+          { name: "Inlet" },
+          { name: "Treatment" },
+          { name: "Treated Water" },
+          { name: "TSE Water" },
+        ],
+        links: [
+          { source: 0, target: 2, value: Math.max(1, tankerVolume) }, // Ensure minimum value of 1
+          { source: 1, target: 2, value: Math.max(1, directSewage) },
+          { source: 2, target: 3, value: Math.max(1, totalInlet) },
+          { source: 3, target: 4, value: Math.max(1, totalTreated) },
+          { source: 4, target: 5, value: Math.max(1, totalTSE) },
+        ],
+      }
+
+      setSankeyData(newSankeyData)
+    }
+  }, [data])
+
+  return (
+    <div className="h-96">
+      <ResponsiveContainer width="100%" height="100%">
+        <Sankey
+          data={sankeyData}
+          node={<CustomNode />}
+          link={<CustomLink />}
+          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+        >
+          <Tooltip formatter={(value) => `${value.toLocaleString()} m³`} labelFormatter={(name) => `${name}`} />
+          <Layer />
+        </Sankey>
+      </ResponsiveContainer>
     </div>
   )
 }

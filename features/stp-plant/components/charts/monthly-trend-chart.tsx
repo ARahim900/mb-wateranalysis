@@ -40,14 +40,6 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
           y: month.totalIrrigationOutput,
         })),
       },
-      {
-        id: "Treatment Losses",
-        color: "#FF5252", // Red color for losses
-        data: data.map((month) => ({
-          x: month.month,
-          y: month.totalInletSewage - month.totalTreatedWater,
-        })),
-      },
     ]
   }, [data])
 
@@ -61,10 +53,7 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
   return (
     <Card className="col-span-2">
       <CardContent className="p-6">
-        <SectionHeader
-          title="Loss Trends Over Time"
-          description="Monthly water flow and loss trends through the STP plant"
-        />
+        <SectionHeader title="Monthly Trends" description="Monthly water flow trends through the STP plant" />
         <div className="h-80">
           <ResponsiveLine
             data={chartData}
@@ -98,30 +87,13 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
               legendPosition: "middle",
             }}
             colors={{ datum: "color" }}
-            pointSize={8}
+            pointSize={10}
             pointColor={{ theme: "background" }}
             pointBorderWidth={2}
             pointBorderColor={{ from: "serieColor" }}
             pointLabelYOffset={-12}
             enableSlices="x"
             useMesh={true}
-            lineWidth={3} // Increase line width for better visibility
-            enablePoints={true}
-            enableLine={true} // Ensure lines are always enabled
-            animate={true}
-            motionConfig="gentle"
-            theme={{
-              tooltip: {
-                container: {
-                  background: "white",
-                  color: "#333",
-                  fontSize: 12,
-                  borderRadius: "4px",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.25)",
-                  padding: "5px 9px",
-                },
-              },
-            }}
             legends={[
               {
                 anchor: "bottom-right",
@@ -148,6 +120,20 @@ export function MonthlyTrendChart({ data, selectedMonth }: MonthlyTrendChartProp
                 ],
               },
             ]}
+            animate={true}
+            motionConfig="gentle"
+            theme={{
+              tooltip: {
+                container: {
+                  background: "white",
+                  color: "#333",
+                  fontSize: 12,
+                  borderRadius: "4px",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.25)",
+                  padding: "5px 9px",
+                },
+              },
+            }}
             markers={
               selectedMonth
                 ? [

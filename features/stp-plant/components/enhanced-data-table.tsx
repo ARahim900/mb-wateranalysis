@@ -4,11 +4,11 @@ import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from "lucide-react"
 interface DataRow {
   id: string | number
   date: string
-  influentFlow?: number
-  effluentFlow?: number
-  efficiency?: number
-  energyUsage?: number
-  chemicalUsage?: number
+  influentFlow: number
+  effluentFlow: number
+  efficiency: number
+  energyUsage: number
+  chemicalUsage: number
   [key: string]: any
 }
 
@@ -18,20 +18,10 @@ interface EnhancedDataTableProps {
   title?: string
 }
 
-// Helper function to safely format numbers
-const safeFormat = (value: number | undefined | null, decimals = 1): string => {
-  if (value === undefined || value === null || isNaN(value)) {
-    return "N/A"
-  }
-  return value.toFixed(decimals)
-}
-
 export const EnhancedDataTable: React.FC<EnhancedDataTableProps> = ({ data, previousData, title = "Raw Data" }) => {
   // Function to calculate percentage change
-  const calculateChange = (current: number | undefined | null, previous: number | undefined | null) => {
-    if (current === undefined || current === null || previous === undefined || previous === null || previous === 0) {
-      return null
-    }
+  const calculateChange = (current: number, previous: number | undefined) => {
+    if (!previous) return null
     return ((current - previous) / previous) * 100
   }
 
@@ -109,55 +99,55 @@ export const EnhancedDataTable: React.FC<EnhancedDataTableProps> = ({ data, prev
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <span className="mr-2">{safeFormat(row.influentFlow)}</span>
+                      <span className="mr-2">{row.influentFlow.toFixed(1)}</span>
                       <span className={influentTrend.color}>
                         {influentTrend.icon}
                         {influentChange !== null && (
-                          <span className="ml-1 text-xs">{safeFormat(Math.abs(influentChange))}</span>
+                          <span className="ml-1 text-xs">{Math.abs(influentChange).toFixed(1)}%</span>
                         )}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <span className="mr-2">{safeFormat(row.effluentFlow)}</span>
+                      <span className="mr-2">{row.effluentFlow.toFixed(1)}</span>
                       <span className={effluentTrend.color}>
                         {effluentTrend.icon}
                         {effluentChange !== null && (
-                          <span className="ml-1 text-xs">{safeFormat(Math.abs(effluentChange))}</span>
+                          <span className="ml-1 text-xs">{Math.abs(effluentChange).toFixed(1)}%</span>
                         )}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <span className="mr-2">{safeFormat(row.efficiency)}</span>
+                      <span className="mr-2">{row.efficiency.toFixed(1)}</span>
                       <span className={efficiencyTrend.color}>
                         {efficiencyTrend.icon}
                         {efficiencyChange !== null && (
-                          <span className="ml-1 text-xs">{safeFormat(Math.abs(efficiencyChange))}</span>
+                          <span className="ml-1 text-xs">{Math.abs(efficiencyChange).toFixed(1)}%</span>
                         )}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <span className="mr-2">{safeFormat(row.energyUsage)}</span>
+                      <span className="mr-2">{row.energyUsage.toFixed(1)}</span>
                       <span className={energyTrend.color}>
                         {energyTrend.icon}
                         {energyChange !== null && (
-                          <span className="ml-1 text-xs">{safeFormat(Math.abs(energyChange))}</span>
+                          <span className="ml-1 text-xs">{Math.abs(energyChange).toFixed(1)}%</span>
                         )}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <span className="mr-2">{safeFormat(row.chemicalUsage)}</span>
+                      <span className="mr-2">{row.chemicalUsage.toFixed(1)}</span>
                       <span className={chemicalTrend.color}>
                         {chemicalTrend.icon}
                         {chemicalChange !== null && (
-                          <span className="ml-1 text-xs">{safeFormat(Math.abs(chemicalChange))}</span>
+                          <span className="ml-1 text-xs">{Math.abs(chemicalChange).toFixed(1)}%</span>
                         )}
                       </span>
                     </div>
