@@ -23,3 +23,6 @@ export function useMobile() {
 
   return isMobile
 }
+
+// Add this export for backward compatibility
+export const useIsMobile = useMobile
